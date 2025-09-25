@@ -17,58 +17,187 @@
  */
 package es.uvigo.esei.dai.hybridserver.http;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.net.URLDecoder;
+import java.util.HashMap;
 import java.util.Map;
 
 public class HTTPRequest {
+  private HTTPRequestMethod method;
+  private String resourceChain;
+  private String resourceName;
+  private Map<String, String> resourceParameters;
+  private String httpVersion;
+  private Map<String, String> headerParameters;
+  private String content;
+  private int contentLength;
+
+
   public HTTPRequest(Reader reader) throws IOException, HTTPParseException {
-    // TODO Completar. Cualquier error en el procesado debe lanzar una HTTPParseException
+    this.resourceParameters = new HashMap<>();
+    this.headerParameters = new HashMap<>();
+    this.contentLength = 0;
+    this.content = "";
+    
+    try {
+      parseRequest(reader);
+    } catch (Exception e) {
+      throw new HTTPParseException("Error parsing HTTP request: " + e.getMessage());
+    }
+  }
+  
+  private void parseRequest(Reader reader) throws IOException {
+    BufferedReader bufferedReader = new BufferedReader(reader);
+    
+    // Parse request line: METHOD /resource?params HTTP/1.1
+    String requestLine = bufferedReader.readLine();
+    if (requestLine == null || requestLine.trim().isEmpty()) {
+      throw new IOException("Empty request line");
+    }
+    
+    parseRequestLine(requestLine);
+    
+    // Parse headers
+    parseHeaders(bufferedReader);
+    
+    // Read content if exists
+    if (contentLength > 0) {
+      parseContent(bufferedReader);
+    }
+  }
+  
+  private void parseRequestLine(String requestLine) throws IOException {
+    String[] parts = requestLine.split(" ");
+    if (parts.length < 3) {
+      throw new IOException("Invalid request line: " + requestLine);
+    }
+    
+    // Parse method
+    try {
+      this.method = HTTPRequestMethod.valueOf(parts[0].toUpperCase());
+    } catch (IllegalArgumentException e) {
+      throw new IOException("Unsupported HTTP method: " + parts[0]);
+    }
+    
+    // Parse resource and parameters
+    this.resourceChain = parts[1];
+    parseResource(parts[1]);
+    
+    // Parse HTTP version
+    this.httpVersion = parts[2];
+  }
+  
+  private void parseResource(String resourceWithParams) throws IOException {
+    if (resourceWithParams.contains("?")) {
+      String[] resourceParts = resourceWithParams.split("\\?", 2);
+      this.resourceName = resourceParts[0];
+      parseParameters(resourceParts[1]);
+    } else {
+      this.resourceName = resourceWithParams;
+    }
+  }
+  
+  private void parseParameters(String paramString) throws IOException {
+    if (paramString == null || paramString.isEmpty()) return;
+    
+    String[] pairs = paramString.split("&");
+    for (String pair : pairs) {
+      String[] keyValue = pair.split("=", 2);
+      if (keyValue.length == 2) {
+        try {
+          String key = URLDecoder.decode(keyValue[0], "UTF-8");
+          String value = URLDecoder.decode(keyValue[1], "UTF-8");
+          resourceParameters.put(key, value);
+        } catch (Exception e) {
+          // Skip malformed parameters
+        }
+      }
+    }
+  }
+  
+  private void parseHeaders(BufferedReader reader) throws IOException {
+    String line;
+    while ((line = reader.readLine()) != null && !line.trim().isEmpty()) {
+      int colonIndex = line.indexOf(':');
+      if (colonIndex > 0) {
+        String headerName = line.substring(0, colonIndex).trim();
+        String headerValue = line.substring(colonIndex + 1).trim();
+        headerParameters.put(headerName.toLowerCase(), headerValue);
+        
+        // Capture Content-Length
+        if ("content-length".equals(headerName.toLowerCase())) {
+          try {
+            this.contentLength = Integer.parseInt(headerValue);
+          } catch (NumberFormatException e) {
+            this.contentLength = 0;
+          }
+        }
+      }
+    }
+  }
+  
+  private void parseContent(BufferedReader reader) throws IOException {
+    char[] buffer = new char[contentLength];
+    int totalRead = 0;
+    while (totalRead < contentLength) {
+      int read = reader.read(buffer, totalRead, contentLength - totalRead);
+      if (read == -1) break;
+      totalRead += read;
+    }
+    this.content = new String(buffer, 0, totalRead);
+    
+    // For POST, parse parameters from body if form-encoded
+    String contentType = headerParameters.get("content-type");
+    if (HTTPRequestMethod.POST.equals(method) && contentType != null && 
+        contentType.contains("application/x-www-form-urlencoded")) {
+      try {
+        parseParameters(this.content);
+      } catch (IOException e) {
+        // Ignore malformed content parameters
+      }
+    }
   }
 
   public HTTPRequestMethod getMethod() {
-    // TODO Completar
-    return null;
+    return method;
   }
 
   public String getResourceChain() {
-    // TODO Completar
-    return null;
+    return resourceChain;
   }
 
   public String[] getResourcePath() {
-    // TODO Completar
-    return null;
+    if (resourceName == null || resourceName.equals("/")) {
+      return new String[0];
+    }
+    String path = resourceName.startsWith("/") ? resourceName.substring(1) : resourceName;
+    return path.split("/");
   }
 
   public String getResourceName() {
-    // TODO Completar
-    return null;
+    return resourceName;
   }
 
   public Map<String, String> getResourceParameters() {
-    // TODO Completar
-    return null;
+    return resourceParameters;
   }
 
   public String getHttpVersion() {
-    // TODO Completar
-    return null;
+    return httpVersion;
   }
 
   public Map<String, String> getHeaderParameters() {
-    // TODO Completar
-    return null;
+    return headerParameters;
   }
 
   public String getContent() {
-    // TODO Completar
-    return null;
+    return content;
   }
 
   public int getContentLength() {
-    // TODO Completar
-    return -1;
+    return contentLength;
   }
 
   @Override

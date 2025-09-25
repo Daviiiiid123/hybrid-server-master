@@ -18,74 +18,124 @@
 package es.uvigo.esei.dai.hybridserver.http;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class HTTPResponse {
+  private HTTPResponseStatus status;
+  private String version;
+  private String content;
+  private final Map<String, String> parameters;
+  
   public HTTPResponse() {
-    // TODO Completar
+    this.status = HTTPResponseStatus.S200;
+    this.version = "HTTP/1.1";
+    this.content = "";
+    this.parameters = new HashMap<>();
+    
+    // Default headers
+    this.parameters.put("Content-Type", "text/html; charset=UTF-8");
+    this.parameters.put("Server", "HybridServer/1.0");
   }
 
   public HTTPResponseStatus getStatus() {
-    // TODO Completar
-    return null;
+    return status;
   }
 
   public void setStatus(HTTPResponseStatus status) {
-    // TODO Completar
+    this.status = status;
   }
 
   public String getVersion() {
-    // TODO Completar
-    return null;
+    return version;
   }
 
   public void setVersion(String version) {
-    // TODO Completar
+    this.version = version;
   }
 
   public String getContent() {
-    // TODO Completar
-    return null;
+    return content;
   }
 
   public void setContent(String content) {
-    // TODO Completar
+    this.content = content != null ? content : "";
+    // Update Content-Length automatically
+    putParameter("Content-Length", String.valueOf(this.content.getBytes().length));
   }
 
   public Map<String, String> getParameters() {
-    // TODO Completar
-    return null;
+    return parameters;
   }
 
   public String putParameter(String name, String value) {
-    // TODO Completar
-    return null;
+    return parameters.put(name, value);
   }
 
   public boolean containsParameter(String name) {
-    // TODO Completar
-    return false;
+    return parameters.containsKey(name);
   }
 
   public String removeParameter(String name) {
-    // TODO Completar
-    return null;
+    return parameters.remove(name);
   }
 
   public void clearParameters() {
-    // TODO Completar
+    parameters.clear();
   }
 
   public List<String> listParameters() {
-    // TODO Completar
-    return null;
+    return new ArrayList<>(parameters.keySet());
   }
 
   public void print(Writer writer) throws IOException {
-    // TODO Completar
+    // Update Content-Length before printing
+    if (content != null) {
+      putParameter("Content-Length", String.valueOf(content.getBytes("UTF-8").length));
+    }
+    
+    PrintWriter printWriter = new PrintWriter(writer, true);
+    
+    // Status line: HTTP/1.1 200 OK
+    printWriter.println(version + " " + getStatusCode(status) + " " + getStatusMessage(status));
+    
+    // Headers
+    for (Map.Entry<String, String> param : parameters.entrySet()) {
+      printWriter.println(param.getKey() + ": " + param.getValue());
+    }
+    
+    // Empty line separating headers from content
+    printWriter.println();
+    
+    // Content
+    if (content != null && !content.isEmpty()) {
+      printWriter.print(content);
+    }
+    
+    printWriter.flush();
+  }
+  
+  private int getStatusCode(HTTPResponseStatus status) {
+    String statusName = status.name();
+    return Integer.parseInt(statusName.substring(1)); // Remove 'S' prefix
+  }
+  
+  private String getStatusMessage(HTTPResponseStatus status) {
+    switch (status) {
+      case S200: return "OK";
+      case S201: return "Created";
+      case S204: return "No Content";
+      case S400: return "Bad Request";
+      case S404: return "Not Found";
+      case S405: return "Method Not Allowed";
+      case S500: return "Internal Server Error";
+      default: return "Unknown";
+    }
   }
 
   @Override
