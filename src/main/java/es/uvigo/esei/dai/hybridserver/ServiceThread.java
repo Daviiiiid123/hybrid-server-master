@@ -24,6 +24,7 @@ import java.net.Socket;
 import java.util.Map;
 import java.util.UUID;
 
+import es.uvigo.esei.dai.hybridserver.dao.HTMLPageDAO;
 import es.uvigo.esei.dai.hybridserver.http.HTTPRequest;
 import es.uvigo.esei.dai.hybridserver.http.HTTPRequestMethod;
 import es.uvigo.esei.dai.hybridserver.http.HTTPResponse;
@@ -80,11 +81,13 @@ public class ServiceThread implements Runnable {
     }
 
     private HTTPResponse processRequest(HTTPRequest request) {
-        // Dispatch básico según el método HTTP (GET, POST, ...)
+        // Dispatch básico según el método HTTP (GET, POST, DELETE, ...)
         if (HTTPRequestMethod.GET.equals(request.getMethod())) {
             return handleGet(request);
         } else if (HTTPRequestMethod.POST.equals(request.getMethod())) {
             return handlePost(request);
+        } else if (HTTPRequestMethod.DELETE.equals(request.getMethod())) {
+            return handleDelete(request);
         } else {
             // Si el método no está soportado devolvemos 405 Method Not Allowed
             return createErrorResponse(HTTPResponseStatus.S405, "Method Not Allowed");
@@ -125,10 +128,12 @@ public class ServiceThread implements Runnable {
             // Generar un UUID único para la nueva página
             String uuid = UUID.randomUUID().toString();
 
-            // Guardar la página en memoria (mapa compartido del servidor)
-            Map<String, String> pages = server.getPages();
-            if (pages != null) {
-                pages.put(uuid, htmlParam);
+            // Guardar la página usando el DAO
+            HTMLPageDAO pageDAO = server.getPageDAO();
+            boolean saved = pageDAO.savePage(uuid, htmlParam);
+            
+            if (!saved) {
+                return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
             }
 
             // Preparar la respuesta HTML informando del recurso creado y proporcionando
@@ -151,6 +156,48 @@ public class ServiceThread implements Runnable {
         }
 
         return createErrorResponse(HTTPResponseStatus.S405, "Method Not Allowed");
+    }
+
+    private HTTPResponse handleDelete(HTTPRequest request) {
+        String path = request.getResourceName();
+
+        if ("/html".equals(path)) {
+            String uuid = request.getResourceParameters().get("uuid");
+            
+            if (uuid == null || uuid.isEmpty()) {
+                return createErrorResponse(HTTPResponseStatus.S400, "Bad Request - UUID parameter required");
+            }
+
+            try {
+                HTMLPageDAO pageDAO = server.getPageDAO();
+                boolean deleted = pageDAO.deletePage(uuid);
+                
+                if (deleted) {
+                    HTTPResponse response = new HTTPResponse();
+                    response.setStatus(HTTPResponseStatus.S200);
+                    
+                    String html = "<html>" +
+                                 "<head><title>Page Deleted</title></head>" +
+                                 "<body>" +
+                                 "<h1>Page Deleted</h1>" +
+                                 "<p>The page with UUID " + uuid + " has been successfully deleted.</p>" +
+                                 "<p><a href='/html'>Ver lista de páginas</a></p>" +
+                                 "<p><a href='/'>Volver al inicio</a></p>" +
+                                 "</body>" +
+                                 "</html>";
+                    
+                    response.setContent(html);
+                    return response;
+                } else {
+                    return createErrorResponse(HTTPResponseStatus.S404, "Page Not Found");
+                }
+            } catch (Exception e) {
+                System.err.println("Error eliminando página " + uuid + ": " + e.getMessage());
+                return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+            }
+        } else {
+            return createErrorResponse(HTTPResponseStatus.S404, "Not Found");
+        }
     }
 
     private HTTPResponse createWelcomePage() {
@@ -182,14 +229,20 @@ public class ServiceThread implements Runnable {
         html.append("<h1>Lista de páginas HTML</h1>");
         html.append("<ul>");
 
-        Map<String, String> pages = server.getPages();
-        if (pages != null && !pages.isEmpty()) {
-            for (String uuid : pages.keySet()) {
-                html.append("<li><a href='/html?uuid=").append(uuid).append("'>")
-                    .append(uuid).append("</a></li>");
+        try {
+            HTMLPageDAO pageDAO = server.getPageDAO();
+            Map<String, String> pages = pageDAO.getAllPages();
+            
+            if (pages != null && !pages.isEmpty()) {
+                for (String uuid : pages.keySet()) {
+                    html.append("<li><a href='/html?uuid=").append(uuid).append("'>")
+                        .append(uuid).append("</a></li>");
+                }
+            } else {
+                html.append("<li>No hay páginas disponibles</li>");
             }
-        } else {
-            html.append("<li>No hay páginas disponibles</li>");
+        } catch (Exception e) {
+            html.append("<li>Error accediendo a las páginas: ").append(e.getMessage()).append("</li>");
         }
 
         html.append("</ul>");
@@ -202,15 +255,21 @@ public class ServiceThread implements Runnable {
     }
 
     private HTTPResponse servePage(String uuid) {
-        Map<String, String> pages = server.getPages();
-        
-        if (pages != null && pages.containsKey(uuid)) {
-            HTTPResponse response = new HTTPResponse();
-            response.setStatus(HTTPResponseStatus.S200);
-            response.setContent(pages.get(uuid));
-            return response;
-        } else {
-            return createErrorResponse(HTTPResponseStatus.S404, "Page Not Found");
+        try {
+            HTMLPageDAO pageDAO = server.getPageDAO();
+            String content = pageDAO.getPage(uuid);
+            
+            if (content != null) {
+                HTTPResponse response = new HTTPResponse();
+                response.setStatus(HTTPResponseStatus.S200);
+                response.setContent(content);
+                return response;
+            } else {
+                return createErrorResponse(HTTPResponseStatus.S404, "Page Not Found");
+            }
+        } catch (Exception e) {
+            System.err.println("Error sirviendo página " + uuid + ": " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
         }
     }
 

@@ -27,8 +27,15 @@ public class Launcher {
   public static void main(String[] args) {
     HybridServer server = null;
     
+    // Validar parámetros de entrada
+    if (args.length > 1) {
+      System.err.println("Error: Demasiados parámetros.");
+      System.err.println("Uso: java es.uvigo.esei.dai.hybridserver.Launcher [archivo_configuracion]");
+      System.exit(1);
+    }
+    
     try {
-      if (args.length > 0) {
+      if (args.length == 1) {
         // Si se proporciona un archivo de configuración, cargar las propiedades
         Properties properties = new Properties();
         try (FileInputStream fis = new FileInputStream(args[0])) {
@@ -70,11 +77,16 @@ public class Launcher {
       System.out.println("  - Página principal: http://localhost:" + server.getPort() + "/");
       System.out.println("  - Lista de páginas: http://localhost:" + server.getPort() + "/html");
       
-      if (server.getPages() != null && !server.getPages().isEmpty()) {
-        System.out.println("Páginas de ejemplo:");
-        for (String uuid : server.getPages().keySet()) {
-          System.out.println("  - http://localhost:" + server.getPort() + "/html?uuid=" + uuid);
+      try {
+        Map<String, String> pages = server.getPageDAO().getAllPages();
+        if (pages != null && !pages.isEmpty()) {
+          System.out.println("Páginas de ejemplo:");
+          for (String uuid : pages.keySet()) {
+            System.out.println("  - http://localhost:" + server.getPort() + "/html?uuid=" + uuid);
+          }
         }
+      } catch (Exception e) {
+        System.out.println("No se pudieron listar las páginas: " + e.getMessage());
       }
       
       System.out.println("\nPresiona Enter para detener el servidor...");
