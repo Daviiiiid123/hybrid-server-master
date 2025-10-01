@@ -22,6 +22,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.util.Map;
+import java.util.UUID;
 
 import es.uvigo.esei.dai.hybridserver.http.HTTPRequest;
 import es.uvigo.esei.dai.hybridserver.http.HTTPRequestMethod;
@@ -29,7 +30,9 @@ import es.uvigo.esei.dai.hybridserver.http.HTTPResponse;
 import es.uvigo.esei.dai.hybridserver.http.HTTPResponseStatus;
 
 public class ServiceThread implements Runnable {
+    // Socket asociado al cliente que atiende este hilo
     private final Socket socket;
+    // Referencia al servidor principal para acceder a recursos compartidos (p.ej. mapa de páginas)
     private final HybridServer server;
 
     public ServiceThread(Socket socket, HybridServer server) {
@@ -39,38 +42,51 @@ public class ServiceThread implements Runnable {
 
     @Override
     public void run() {
+        // Abrimos flujos de lectura/escritura ligados al socket del cliente.
+        // Se usan dentro del try-with-resources para cerrarlos automáticamente.
         try (InputStreamReader reader = new InputStreamReader(socket.getInputStream());
              OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream())) {
 
+            // Parsear la petición HTTP recibida desde el cliente
             HTTPRequest request = new HTTPRequest(reader);
+
+            // Procesar la petición y obtener la respuesta correspondiente
             HTTPResponse response = processRequest(request);
+
+            // Enviar la respuesta al cliente
             response.print(writer);
 
         } catch (Exception e) {
-            // Log error and send 500 response
+            // Si ocurre cualquier excepción durante el procesamiento, intentamos
+            // enviar una respuesta 500 al cliente para informar del error y continuar.
             try (OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream())) {
                 HTTPResponse errorResponse = new HTTPResponse();
                 errorResponse.setStatus(HTTPResponseStatus.S500);
                 errorResponse.setContent("<html><body><h1>500 Internal Server Error</h1></body></html>");
                 errorResponse.print(writer);
             } catch (IOException ioException) {
-                // Cannot send error response
+                // Si no podemos enviar la respuesta de error, no podemos hacer más;
+                // simplemente dejamos que el hilo termine. No lanzamos la excepción
+                // para evitar detener el servidor.
             }
         } finally {
+            // En cualquier caso cerramos el socket del cliente.
             try {
                 socket.close();
             } catch (IOException e) {
-                // Ignore close errors
+                // Ignoramos errores al cerrar el socket para no afectar al resto del servidor.
             }
         }
     }
 
     private HTTPResponse processRequest(HTTPRequest request) {
+        // Dispatch básico según el método HTTP (GET, POST, ...)
         if (HTTPRequestMethod.GET.equals(request.getMethod())) {
             return handleGet(request);
         } else if (HTTPRequestMethod.POST.equals(request.getMethod())) {
             return handlePost(request);
         } else {
+            // Si el método no está soportado devolvemos 405 Method Not Allowed
             return createErrorResponse(HTTPResponseStatus.S405, "Method Not Allowed");
         }
     }
@@ -93,7 +109,47 @@ public class ServiceThread implements Runnable {
     }
 
     private HTTPResponse handlePost(HTTPRequest request) {
-        // For now, just return method not allowed for POST
+        String path = request.getResourceName();
+
+        if ("/html".equals(path)) {
+            // -- Manejo de POST sobre /html --
+            // Se espera que el cuerpo esté codificado como application/x-www-form-urlencoded
+            // y que tenga el parámetro 'html' con el contenido HTML a almacenar.
+            String htmlParam = request.getResourceParameters().get("html");
+
+            // Si falta el parámetro 'html' devolvemos 400 Bad Request
+            if (htmlParam == null || htmlParam.isEmpty()) {
+                return createErrorResponse(HTTPResponseStatus.S400, "Bad Request");
+            }
+
+            // Generar un UUID único para la nueva página
+            String uuid = UUID.randomUUID().toString();
+
+            // Guardar la página en memoria (mapa compartido del servidor)
+            Map<String, String> pages = server.getPages();
+            if (pages != null) {
+                pages.put(uuid, htmlParam);
+            }
+
+            // Preparar la respuesta HTML informando del recurso creado y proporcionando
+            // un enlace para acceder a él (/html?uuid=<uuid>)
+            HTTPResponse response = new HTTPResponse();
+            response.setStatus(HTTPResponseStatus.S201); // 201 Created
+
+            StringBuilder html = new StringBuilder();
+            html.append("<html>");
+            html.append("<head><title>Page Created</title></head>");
+            html.append("<body>");
+            html.append("<h1>Page created</h1>");
+            html.append("<p>New page id: <a href='/html?uuid=").append(uuid).append("'>").append(uuid).append("</a></p>");
+            html.append("<p><a href='/html'>Ver lista de páginas</a></p>");
+            html.append("</body>");
+            html.append("</html>");
+
+            response.setContent(html.toString());
+            return response;
+        }
+
         return createErrorResponse(HTTPResponseStatus.S405, "Method Not Allowed");
     }
 
