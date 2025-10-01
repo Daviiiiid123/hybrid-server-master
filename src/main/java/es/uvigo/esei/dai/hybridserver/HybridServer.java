@@ -91,21 +91,28 @@ public class HybridServer implements AutoCloseable {
       @Override
       public void run() {
         try (final ServerSocket serverSocket = new ServerSocket(getPort())) {
-          while (true) {
+          System.out.println("ServerSocket creado y escuchando en puerto " + getPort());
+          
+          while (!stop) {
             try {
               Socket socket = serverSocket.accept();
-              if (stop)
+              if (stop) {
+                socket.close();
                 break;
+              }
 
+              System.out.println("Nueva conexión aceptada desde: " + socket.getRemoteSocketAddress());
               // Usar pool de hilos para manejar cada cliente
               threadPool.submit(new ServiceThread(socket, HybridServer.this));
             } catch (IOException e) {
               if (!stop) {
-                e.printStackTrace();
+                System.err.println("Error aceptando conexión: " + e.getMessage());
               }
             }
           }
+          System.out.println("Servidor detenido correctamente");
         } catch (IOException e) {
+          System.err.println("Error iniciando ServerSocket: " + e.getMessage());
           e.printStackTrace();
         }
       }
@@ -125,18 +132,22 @@ public class HybridServer implements AutoCloseable {
       threadPool.shutdown();
     }
 
+    // Intentar despertar el hilo servidor de forma segura
     try (Socket socket = new Socket("localhost", getPort())) {
       // Esta conexión se hace, simplemente, para "despertar" el hilo servidor
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      // Si no podemos conectar, el servidor probablemente ya está cerrado
+      System.err.println("No se pudo conectar para despertar el servidor (probablemente ya cerrado): " + e.getMessage());
     }
 
-    try {
-      this.serverThread.join();
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
+    if (serverThread != null) {
+      try {
+        this.serverThread.join(5000); // Esperar máximo 5 segundos
+      } catch (InterruptedException e) {
+        System.err.println("Interrupción mientras se esperaba el cierre del servidor: " + e.getMessage());
+        Thread.currentThread().interrupt();
+      }
+      this.serverThread = null;
     }
-
-    this.serverThread = null;
   }
 }
