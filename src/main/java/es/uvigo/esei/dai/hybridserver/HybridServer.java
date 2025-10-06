@@ -20,43 +20,46 @@ package es.uvigo.esei.dai.hybridserver;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import es.uvigo.esei.dai.hybridserver.dao.HTMLPageDAO;
+import es.uvigo.esei.dai.hybridserver.dao.HTMLPageDatabaseDAO;
+import es.uvigo.esei.dai.hybridserver.dao.HTMLPageMemoryDAO;
 
 public class HybridServer implements AutoCloseable {
   private static final int SERVICE_PORT = 8888;
   private Thread serverThread;
   private boolean stop;
   //Nuevos atributos para A1
-  private ExecutorService threadPool;
-  private int numClients;
-  private Map<String, String> pages; //Lista de páginas en memoria
-  private Properties config; // Configuraciones del servidor
-  private int port;
-  //Manejo base de datos
-  private String dbUrl;
-  private String dbUser;
-  private String dbPassword;
+  private final ExecutorService threadPool;
+  private final int numClients;
+  private HTMLPageDAO pageDAO; // DAO para almacenamiento de páginas
+  private final Properties config; // Configuraciones del servidor
+  private final int port;
 
   public HybridServer() {
     // Inicializar con los parámetros por defecto
     this.numClients = 50;
     this.port = SERVICE_PORT;
-    this.pages = new HashMap<>();
     this.config = null;
     this.threadPool = Executors.newFixedThreadPool(numClients);
+    
+    // Usar DAO en memoria por defecto
+    this.pageDAO = new HTMLPageMemoryDAO();
   }
 
   public HybridServer(Map<String, String> pages) {
     // Inicializar con la base de datos en memoria conteniendo "pages"
     this.numClients = 50;
     this.port = SERVICE_PORT;
-    this.pages = pages != null ? pages : new HashMap<>();
     this.config = null;
     this.threadPool = Executors.newFixedThreadPool(numClients);
+    
+    // Usar DAO en memoria con páginas iniciales
+    this.pageDAO = new HTMLPageMemoryDAO(pages);
   }
 
   public HybridServer(Properties properties) {
@@ -64,13 +67,27 @@ public class HybridServer implements AutoCloseable {
     this.config = properties;
     this.numClients = Integer.parseInt(properties.getProperty("numClients", "50"));
     this.port = Integer.parseInt(properties.getProperty("port", String.valueOf(SERVICE_PORT)));
-    this.pages = new HashMap<>();
     this.threadPool = Executors.newFixedThreadPool(numClients);
     
-    // Database properties (for future use)
-    this.dbUrl = properties.getProperty("db.url");
-    this.dbUser = properties.getProperty("db.user");
-    this.dbPassword = properties.getProperty("db.password");
+    // Determinar tipo de DAO según configuración
+    String dbUrl = properties.getProperty("db.url");
+    String dbUser = properties.getProperty("db.user");
+    String dbPassword = properties.getProperty("db.password");
+    
+    if (dbUrl != null && dbUser != null && dbPassword != null) {
+      // Intentar usar base de datos
+      try {
+        this.pageDAO = new HTMLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+        System.out.println("Usando almacenamiento en base de datos: " + dbUrl);
+      } catch (Exception e) {
+        System.err.println("Error conectando con base de datos, usando memoria: " + e.getMessage());
+        this.pageDAO = new HTMLPageMemoryDAO();
+      }
+    } else {
+      // Usar memoria si no hay configuración de BD
+      this.pageDAO = new HTMLPageMemoryDAO();
+      System.out.println("Usando almacenamiento en memoria");
+    }
   }
 
   public int getPort() {
@@ -78,8 +95,8 @@ public class HybridServer implements AutoCloseable {
   }
   
   // Getters for ServiceThread
-  public Map<String, String> getPages() {
-    return pages;
+  public HTMLPageDAO getPageDAO() {
+    return pageDAO;
   }
   
   public Properties getConfig() {
@@ -91,21 +108,28 @@ public class HybridServer implements AutoCloseable {
       @Override
       public void run() {
         try (final ServerSocket serverSocket = new ServerSocket(getPort())) {
-          while (true) {
+          System.out.println("ServerSocket creado y escuchando en puerto " + getPort());
+          
+          while (!stop) {
             try {
               Socket socket = serverSocket.accept();
-              if (stop)
+              if (stop) {
+                socket.close();
                 break;
+              }
 
+              System.out.println("Nueva conexión aceptada desde: " + socket.getRemoteSocketAddress());
               // Usar pool de hilos para manejar cada cliente
               threadPool.submit(new ServiceThread(socket, HybridServer.this));
             } catch (IOException e) {
               if (!stop) {
-                e.printStackTrace();
+                System.err.println("Error aceptando conexión: " + e.getMessage());
               }
             }
           }
+          System.out.println("Servidor detenido correctamente");
         } catch (IOException e) {
+          System.err.println("Error iniciando ServerSocket: " + e.getMessage());
           e.printStackTrace();
         }
       }
@@ -125,18 +149,22 @@ public class HybridServer implements AutoCloseable {
       threadPool.shutdown();
     }
 
+    // Intentar despertar el hilo servidor de forma segura
     try (Socket socket = new Socket("localhost", getPort())) {
       // Esta conexión se hace, simplemente, para "despertar" el hilo servidor
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      // Si no podemos conectar, el servidor probablemente ya está cerrado
+      System.err.println("No se pudo conectar para despertar el servidor (probablemente ya cerrado): " + e.getMessage());
     }
 
-    try {
-      this.serverThread.join();
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
+    if (serverThread != null) {
+      try {
+        this.serverThread.join(5000); // Esperar máximo 5 segundos
+      } catch (InterruptedException e) {
+        System.err.println("Interrupción mientras se esperaba el cierre del servidor: " + e.getMessage());
+        Thread.currentThread().interrupt();
+      }
+      this.serverThread = null;
     }
-
-    this.serverThread = null;
   }
 }

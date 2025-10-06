@@ -39,8 +39,8 @@ public class HTTPResponse {
     this.parameters = new HashMap<>();
     
     // Default headers
-    this.parameters.put("Content-Type", "text/html; charset=UTF-8");
-    this.parameters.put("Server", "HybridServer/1.0");
+    //this.parameters.put("Content-Type", "text/html; charset=UTF-8");
+    //this.parameters.put("Server", "HybridServer/1.0");
   }
 
   public HTTPResponseStatus getStatus() {
@@ -94,31 +94,38 @@ public class HTTPResponse {
   }
 
   public void print(Writer writer) throws IOException {
-    // Update Content-Length before printing
-    if (content != null) {
-      putParameter("Content-Length", String.valueOf(content.getBytes("UTF-8").length));
-    }
-    
-    PrintWriter printWriter = new PrintWriter(writer, true);
-    
-    // Status line: HTTP/1.1 200 OK
-    printWriter.println(version + " " + getStatusCode(status) + " " + getStatusMessage(status));
-    
-    // Headers
-    for (Map.Entry<String, String> param : parameters.entrySet()) {
-      printWriter.println(param.getKey() + ": " + param.getValue());
-    }
-    
-    // Empty line separating headers from content
-    printWriter.println();
-    
-    // Content
-    if (content != null && !content.isEmpty()) {
-      printWriter.print(content);
-    }
-    
-    printWriter.flush();
+  PrintWriter printWriter = new PrintWriter(writer, true);
+
+  // Status line
+  printWriter.print(version + " " + getStatusCode(status) + " " + getStatusMessage(status) + "\r\n");
+
+  boolean contentEmpty = (content == null || content.isEmpty());
+
+  // Sólo actualizar Content-Length si hay contenido
+  if (!contentEmpty) {
+    putParameter("Content-Length", String.valueOf(content.getBytes("UTF-8").length));
   }
+
+  // Si no hay parámetros a imprimir (map vacío) -> línea en blanco y fin
+  if (parameters.isEmpty()) {
+    printWriter.print("\r\n");
+    printWriter.flush();
+    return;
+  }
+
+  // Imprimir cabeceras existentes (solo las que el objeto tiene)
+  for (Map.Entry<String, String> param : parameters.entrySet()) {
+    printWriter.print(param.getKey() + ": " + param.getValue() + "\r\n");
+  }
+
+  // Separador y posible cuerpo
+  printWriter.print("\r\n");
+  if (!contentEmpty) {
+    printWriter.print(content);
+  }
+
+  printWriter.flush();
+}
   
   private int getStatusCode(HTTPResponseStatus status) {
     String statusName = status.name();
