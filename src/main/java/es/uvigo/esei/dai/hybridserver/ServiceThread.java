@@ -45,8 +45,8 @@ public class ServiceThread implements Runnable {
     public void run() {
         // Abrimos flujos de lectura/escritura ligados al socket del cliente.
         // Se usan dentro del try-with-resources para cerrarlos automáticamente.
-        try (InputStreamReader reader = new InputStreamReader(socket.getInputStream());
-             OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream())) {
+        try (InputStreamReader reader = new InputStreamReader(socket.getInputStream(), "UTF-8");
+             OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream(), "UTF-8")) {
 
             System.out.println("[ServiceThread] Iniciando procesamiento de petición");
             
@@ -74,7 +74,7 @@ public class ServiceThread implements Runnable {
             e.printStackTrace();
             // Si ocurre cualquier excepción durante el procesamiento, intentamos
             // enviar una respuesta 500 al cliente para informar del error y continuar.
-            try (OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream())) {
+            try (OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream(), "UTF-8")) {
                 HTTPResponse errorResponse = new HTTPResponse();
                 errorResponse.setStatus(HTTPResponseStatus.S500);
                 errorResponse.putParameter("Content-Type", "text/html");
@@ -123,7 +123,8 @@ public class ServiceThread implements Runnable {
                 return createPageList();
             }
         } else {
-            return createErrorResponse(HTTPResponseStatus.S404, "Not Found");
+            // Invalid resource path - return 400 Bad Request
+            return createErrorResponse(HTTPResponseStatus.S400, "Bad Request");
         }
     }
 
@@ -155,7 +156,7 @@ public class ServiceThread implements Runnable {
             // Preparar la respuesta HTML informando del recurso creado y proporcionando
             // un enlace para acceder a él (/html?uuid=<uuid>)
             HTTPResponse response = new HTTPResponse();
-            response.setStatus(HTTPResponseStatus.S201); // 201 Created
+            response.setStatus(HTTPResponseStatus.S200); // 200 OK (test expects this instead of 201)
             response.putParameter("Content-Type", "text/html");
 
             StringBuilder html = new StringBuilder();
@@ -163,8 +164,8 @@ public class ServiceThread implements Runnable {
             html.append("<head><title>Page Created</title></head>");
             html.append("<body>");
             html.append("<h1>Page created</h1>");
-            html.append("<p>New page id: <a href='/html?uuid=").append(uuid).append("'>").append(uuid).append("</a></p>");
-            html.append("<p><a href='/html'>Ver lista de páginas</a></p>");
+            html.append("<p>New page id: <a href=\"html?uuid=").append(uuid).append("\">").append(uuid).append("</a></p>");
+            html.append("<p><a href=\"/html\">Ver lista de páginas</a></p>");
             html.append("</body>");
             html.append("</html>");
 
@@ -178,8 +179,10 @@ public class ServiceThread implements Runnable {
     private HTTPResponse handleDelete(HTTPRequest request) {
         String path = request.getResourceName();
 
-        if ("/html".equals(path)) {
+        if ("html".equals(path) || "/html".equals(path)) {
             String uuid = request.getResourceParameters().get("uuid");
+            
+            System.out.println("[DELETE] UUID solicitado: " + uuid);
             
             if (uuid == null || uuid.isEmpty()) {
                 return createErrorResponse(HTTPResponseStatus.S400, "Bad Request - UUID parameter required");
@@ -187,7 +190,13 @@ public class ServiceThread implements Runnable {
 
             try {
                 HTMLPageDAO pageDAO = server.getPageDAO();
+                
+                // Debug: verificar si la página existe
+                boolean exists = pageDAO.pageExists(uuid);
+                System.out.println("[DELETE] Página existe? " + exists);
+                
                 boolean deleted = pageDAO.deletePage(uuid);
+                System.out.println("[DELETE] Página eliminada? " + deleted);
                 
                 if (deleted) {
                     HTTPResponse response = new HTTPResponse();
