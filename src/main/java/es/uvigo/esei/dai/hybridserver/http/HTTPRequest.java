@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.net.URLDecoder;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class HTTPRequest {
@@ -36,10 +37,12 @@ public class HTTPRequest {
 
 
   public HTTPRequest(Reader reader) throws IOException, HTTPParseException {
-    this.resourceParameters = new HashMap<>();
-    this.headerParameters = new HashMap<>();
-    this.contentLength = 0;
-    this.content = "";
+  this.resourceParameters = new HashMap<>();
+  // preserve header insertion order so toString outputs headers in the same order they were read
+  this.headerParameters = new LinkedHashMap<>();
+  this.contentLength = 0;
+  // when there is no content, tests expect null
+  this.content = null;
     
     try {
       parseRequest(reader);
@@ -82,8 +85,8 @@ public class HTTPRequest {
     }
     
     // Parse resource and parameters
-    this.resourceChain = parts[1];
-    parseResource(parts[1]);
+  this.resourceChain = parts[1];
+  parseResource(parts[1]);
     
     // Parse HTTP version
     this.httpVersion = parts[2];
@@ -92,11 +95,20 @@ public class HTTPRequest {
   private void parseResource(String resourceWithParams) throws IOException {
     if (resourceWithParams.contains("?")) {
       String[] resourceParts = resourceWithParams.split("\\?", 2);
-      this.resourceName = resourceParts[0];
+      this.resourceName = normalizeResourceName(resourceParts[0]);
       parseParameters(resourceParts[1]);
     } else {
-      this.resourceName = resourceWithParams;
+      this.resourceName = normalizeResourceName(resourceWithParams);
     }
+  }
+
+  private String normalizeResourceName(String rawName) {
+    if (rawName == null) return null;
+    // strip leading slash for resourceName to match tests (e.g., "hello/world.html")
+    if (rawName.startsWith("/")) {
+      return rawName.substring(1);
+    }
+    return rawName;
   }
   
   private void parseParameters(String paramString) throws IOException {
@@ -124,7 +136,8 @@ public class HTTPRequest {
       if (colonIndex > 0) {
         String headerName = line.substring(0, colonIndex).trim();
         String headerValue = line.substring(colonIndex + 1).trim();
-        headerParameters.put(headerName.toLowerCase(), headerValue);
+        // store header names using the original case as provided in the request
+        headerParameters.put(headerName, headerValue);
         
         // Capture Content-Length
         if ("content-length".equals(headerName.toLowerCase())) {
@@ -139,26 +152,48 @@ public class HTTPRequest {
   }
   
   private void parseContent(BufferedReader reader) throws IOException {
-    char[] buffer = new char[contentLength];
-    int totalRead = 0;
-    while (totalRead < contentLength) {
-      int read = reader.read(buffer, totalRead, contentLength - totalRead);
-      if (read == -1) break;
-      totalRead += read;
-    }
-    this.content = new String(buffer, 0, totalRead);
-    
-    // For POST, parse parameters from body if form-encoded
-    String contentType = headerParameters.get("content-type");
-    if (HTTPRequestMethod.POST.equals(method) && contentType != null && 
-        contentType.contains("application/x-www-form-urlencoded")) {
-      try {
-        parseParameters(this.content);
-      } catch (IOException e) {
-        // Ignore malformed content parameters
-      }
+  char[] buffer = new char[contentLength];
+  int totalRead = 0;
+  while (totalRead < contentLength) {
+    int read = reader.read(buffer, totalRead, contentLength - totalRead);
+    if (read == -1) break;
+    totalRead += read;
+  }
+  String rawContent = new String(buffer, 0, totalRead);
+
+  // localizar Content-Type de forma case-insensitive (guardamos headers con case original)
+  String contentType = null;
+  for (Map.Entry<String, String> e : headerParameters.entrySet()) {
+    if ("content-type".equalsIgnoreCase(e.getKey())) {
+      contentType = e.getValue();
+      break;
     }
   }
+
+  // Detectar form-urlencoded aunque no exista Content-Type: si hay pares clave=valor
+  boolean looksLikeForm = rawContent != null && rawContent.contains("=");
+
+  if (HTTPRequestMethod.POST.equals(method) && ( (contentType != null && contentType.contains("application/x-www-form-urlencoded")) || (contentType == null && looksLikeForm) )) {
+    // parseParameters espera la cadena codificada y decodifica cada par
+    try {
+      parseParameters(rawContent);
+    } catch (IOException ex) {
+      // ignorar parseo de parámetros si falla
+    }
+    try {
+      this.content = URLDecoder.decode(rawContent, "UTF-8");
+    } catch (Exception ex) {
+      this.content = rawContent;
+    }
+  } else {
+    // Si no hay body, dejar content a null; si hay, conservarlo tal cual
+    if (rawContent == null || rawContent.isEmpty()) {
+      this.content = null;
+    } else {
+      this.content = rawContent;
+    }
+  }
+}
 
   public HTTPRequestMethod getMethod() {
     return method;
@@ -169,10 +204,14 @@ public class HTTPRequest {
   }
 
   public String[] getResourcePath() {
-    if (resourceName == null || resourceName.equals("/")) {
+    // Considerar null, "/" o cadena vacía como sin path -> devolver array vacío
+    if (resourceName == null || resourceName.equals("/") || resourceName.isEmpty()) {
       return new String[0];
     }
     String path = resourceName.startsWith("/") ? resourceName.substring(1) : resourceName;
+    if(path.isEmpty()) {
+      return new String[0];
+    }
     return path.split("/");
   }
 

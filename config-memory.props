@@ -1,0 +1,3 @@
+# Configuración del Hybrid Server - Solo memoria
+numClients=50
+port=8888
