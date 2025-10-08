@@ -48,24 +48,44 @@ public class Launcher {
         Map<String, String> pages = new HashMap<>();
         
         pages.put("page1", 
-            "<html><head><title>Página 1</title></head>" +
-            "<body><h1>Esta es la página 1</h1>" +
-            "<p>Contenido de la primera página.</p>" +
+            "<html><head><title>Pagina 1 - Gatos</title></head>" +
+            "<body style='background-color: #ffe4e1; font-family: Arial;'>" +
+            "<h1 style='color: #ff6347;'>Pagina de los Gatos</h1>" +
+            "<p>Los gatos son animales adorables y misteriosos.</p>" +
+            "<p>Caracteristicas de los gatos:</p>" +
+            "<ul>" +
+            "<li>Independientes</li>" +
+            "<li>Carinosos</li>" +
+            "<li>Curiosos</li>" +
+            "</ul>" +
             "<p><a href='/html'>Volver a la lista</a></p>" +
             "</body></html>");
             
         pages.put("page2", 
-            "<html><head><title>Página 2</title></head>" +
-            "<body><h1>Esta es la página 2</h1>" +
-            "<p>Contenido de la segunda página.</p>" +
+            "<html><head><title>Pagina 2 - Programacion</title></head>" +
+            "<body style='background-color: #e6f3ff; font-family: Courier;'>" +
+            "<h1 style='color: #0066cc;'>Mundo de la Programacion</h1>" +
+            "<p>La programacion es el arte de resolver problemas con codigo.</p>" +
+            "<p>Lenguajes populares:</p>" +
+            "<ol>" +
+            "<li>Python</li>" +
+            "<li>Java</li>" +
+            "<li>JavaScript</li>" +
+            "</ol>" +
             "<p><a href='/html'>Volver a la lista</a></p>" +
             "</body></html>");
             
         pages.put("welcome", 
-            "<html><head><title>Bienvenida</title></head>" +
-            "<body><h1>¡Bienvenido al Hybrid Server!</h1>" +
-            "<p>Esta es una página de bienvenida.</p>" +
-            "<p><a href='/html'>Ver todas las páginas</a></p>" +
+            "<html><head><title>Bienvenida - Hybrid Server</title></head>" +
+            "<body style='background-color: #f0fff0; font-family: Verdana;'>" +
+            "<h1 style='color: #228b22;'>Bienvenido al Hybrid Server!</h1>" +
+            "<p>Este es un servidor HTTP desarrollado en Java.</p>" +
+            "<p>Explora nuestras paginas:</p>" +
+            "<ul>" +
+            "<li><a href='/html?uuid=page1'>Pagina de los Gatos</a></li>" +
+            "<li><a href='/html?uuid=page2'>Mundo de la Programacion</a></li>" +
+            "</ul>" +
+            "<p><a href='/html'>Ver todas las paginas</a></p>" +
             "</body></html>");
 
         server = new HybridServer(pages);

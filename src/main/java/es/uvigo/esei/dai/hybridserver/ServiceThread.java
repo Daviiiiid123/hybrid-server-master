@@ -48,24 +48,40 @@ public class ServiceThread implements Runnable {
         try (InputStreamReader reader = new InputStreamReader(socket.getInputStream());
              OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream())) {
 
+            System.out.println("[ServiceThread] Iniciando procesamiento de petición");
+            
             // Parsear la petición HTTP recibida desde el cliente
             HTTPRequest request = new HTTPRequest(reader);
+            
+            System.out.println("[ServiceThread] Petición parseada: " + request.getMethod() + " " + request.getResourceName());
 
             // Procesar la petición y obtener la respuesta correspondiente
             HTTPResponse response = processRequest(request);
+            
+            System.out.println("[ServiceThread] Respuesta generada: " + response.getStatus());
+            System.out.println("[ServiceThread] Content-Type: " + response.getParameters().get("Content-Type"));
+            System.out.println("[ServiceThread] Content-Length: " + response.getParameters().get("Content-Length"));
+            System.out.println("[ServiceThread] Contenido (primeros 100 chars): " + 
+                (response.getContent() != null ? response.getContent().substring(0, Math.min(100, response.getContent().length())) : "null"));
 
             // Enviar la respuesta al cliente
             response.print(writer);
+            
+            System.out.println("[ServiceThread] Respuesta enviada correctamente");
 
         } catch (Exception e) {
+            System.err.println("[ServiceThread] Error procesando petición: " + e.getMessage());
+            e.printStackTrace();
             // Si ocurre cualquier excepción durante el procesamiento, intentamos
             // enviar una respuesta 500 al cliente para informar del error y continuar.
             try (OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream())) {
                 HTTPResponse errorResponse = new HTTPResponse();
                 errorResponse.setStatus(HTTPResponseStatus.S500);
+                errorResponse.putParameter("Content-Type", "text/html");
                 errorResponse.setContent("<html><body><h1>500 Internal Server Error</h1></body></html>");
                 errorResponse.print(writer);
             } catch (IOException ioException) {
+                System.err.println("[ServiceThread] Error enviando respuesta de error: " + ioException.getMessage());
                 // Si no podemos enviar la respuesta de error, no podemos hacer más;
                 // simplemente dejamos que el hilo termine. No lanzamos la excepción
                 // para evitar detener el servidor.
@@ -97,9 +113,9 @@ public class ServiceThread implements Runnable {
     private HTTPResponse handleGet(HTTPRequest request) {
         String path = request.getResourceName();
 
-        if ("/".equals(path)) {
+        if ("".equals(path) || "/".equals(path)) {
             return createWelcomePage();
-        } else if ("/html".equals(path)) {
+        } else if ("html".equals(path) || "/html".equals(path)) {
             String uuid = request.getResourceParameters().get("uuid");
             if (uuid != null) {
                 return servePage(uuid);
@@ -114,7 +130,7 @@ public class ServiceThread implements Runnable {
     private HTTPResponse handlePost(HTTPRequest request) {
         String path = request.getResourceName();
 
-        if ("/html".equals(path)) {
+        if ("html".equals(path) || "/html".equals(path)) {
             // -- Manejo de POST sobre /html --
             // Se espera que el cuerpo esté codificado como application/x-www-form-urlencoded
             // y que tenga el parámetro 'html' con el contenido HTML a almacenar.
@@ -140,6 +156,7 @@ public class ServiceThread implements Runnable {
             // un enlace para acceder a él (/html?uuid=<uuid>)
             HTTPResponse response = new HTTPResponse();
             response.setStatus(HTTPResponseStatus.S201); // 201 Created
+            response.putParameter("Content-Type", "text/html");
 
             StringBuilder html = new StringBuilder();
             html.append("<html>");
@@ -175,6 +192,7 @@ public class ServiceThread implements Runnable {
                 if (deleted) {
                     HTTPResponse response = new HTTPResponse();
                     response.setStatus(HTTPResponseStatus.S200);
+                    response.putParameter("Content-Type", "text/html");
                     
                     String html = "<html>" +
                                  "<head><title>Page Deleted</title></head>" +
@@ -203,14 +221,18 @@ public class ServiceThread implements Runnable {
     private HTTPResponse createWelcomePage() {
         HTTPResponse response = new HTTPResponse();
         response.setStatus(HTTPResponseStatus.S200);
+        response.putParameter("Content-Type", "text/html");
         
         String html = "<html>" +
-                     "<head><title>Hybrid Server</title></head>" +
-                     "<body>" +
-                     "<h1>Hybrid Server</h1>" +
-                     "<p>Servidor HTTP sencillo desarrollado en Java</p>" +
-                     "<p>Autores: [Completar con nombres de los autores]</p>" +
-                     "<p><a href='/html'>Ver lista de páginas HTML</a></p>" +
+                     "<head><title>Pagina Principal - Hybrid Server</title></head>" +
+                     "<body style='background-color: #fff8dc; font-family: Arial; text-align: center; padding: 50px;'>" +
+                     "<h1 style='color: #8b4513;'>Hybrid Server</h1>" +
+                     "<h2>Servidor HTTP en Java</h2>" +
+                     "<p style='font-size: 18px;'>Bienvenido al servidor hibrido de paginas HTML</p>" +
+                     "<div style='margin-top: 30px;'>" +
+                     "<a href='/html' style='background-color: #4CAF50; color: white; padding: 15px 32px; text-decoration: none; font-size: 16px; border-radius: 5px;'>" +
+                     "Ver Lista de Paginas</a>" +
+                     "</div>" +
                      "</body>" +
                      "</html>";
         
@@ -221,13 +243,15 @@ public class ServiceThread implements Runnable {
     private HTTPResponse createPageList() {
         HTTPResponse response = new HTTPResponse();
         response.setStatus(HTTPResponseStatus.S200);
+        response.putParameter("Content-Type", "text/html");
         
         StringBuilder html = new StringBuilder();
         html.append("<html>");
-        html.append("<head><title>Lista de páginas HTML</title></head>");
-        html.append("<body>");
-        html.append("<h1>Lista de páginas HTML</h1>");
-        html.append("<ul>");
+        html.append("<head><title>Lista de Paginas</title></head>");
+        html.append("<body style='background-color: #f0f8ff; font-family: Arial; padding: 30px;'>");
+        html.append("<h1 style='color: #4169e1;'>Lista de Paginas HTML Disponibles</h1>");
+        html.append("<div style='background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);'>");
+        html.append("<ul style='list-style-type: none; padding: 0;'>");
 
         try {
             HTMLPageDAO pageDAO = server.getPageDAO();
@@ -235,18 +259,21 @@ public class ServiceThread implements Runnable {
             
             if (pages != null && !pages.isEmpty()) {
                 for (String uuid : pages.keySet()) {
-                    html.append("<li><a href='/html?uuid=").append(uuid).append("'>")
-                        .append(uuid).append("</a></li>");
+                    html.append("<li style='margin: 10px 0; padding: 10px; background-color: #e6f2ff; border-left: 4px solid #4169e1;'>");
+                    html.append("<a href='/html?uuid=").append(uuid).append("' style='text-decoration: none; color: #2c5aa0; font-weight: bold;'>")
+                        .append(uuid).append("</a>");
+                    html.append("</li>");
                 }
             } else {
-                html.append("<li>No hay páginas disponibles</li>");
+                html.append("<li style='color: #888;'>No hay paginas disponibles</li>");
             }
         } catch (Exception e) {
-            html.append("<li>Error accediendo a las páginas: ").append(e.getMessage()).append("</li>");
+            html.append("<li style='color: red;'>Error accediendo a las paginas: ").append(e.getMessage()).append("</li>");
         }
 
         html.append("</ul>");
-        html.append("<p><a href='/'>Volver al inicio</a></p>");
+        html.append("</div>");
+        html.append("<p style='margin-top: 20px;'><a href='/' style='color: #4169e1;'>Volver al inicio</a></p>");
         html.append("</body>");
         html.append("</html>");
         
@@ -262,6 +289,7 @@ public class ServiceThread implements Runnable {
             if (content != null) {
                 HTTPResponse response = new HTTPResponse();
                 response.setStatus(HTTPResponseStatus.S200);
+                response.putParameter("Content-Type", "text/html");
                 response.setContent(content);
                 return response;
             } else {
@@ -276,6 +304,7 @@ public class ServiceThread implements Runnable {
     private HTTPResponse createErrorResponse(HTTPResponseStatus status, String message) {
         HTTPResponse response = new HTTPResponse();
         response.setStatus(status);
+        response.putParameter("Content-Type", "text/html");
         
         String html = "<html>" +
                      "<head><title>" + getStatusCode(status) + " " + message + "</title></head>" +

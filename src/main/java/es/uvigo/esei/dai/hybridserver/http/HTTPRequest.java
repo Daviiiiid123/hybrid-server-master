@@ -73,8 +73,8 @@ public class HTTPRequest {
   
   private void parseRequestLine(String requestLine) throws IOException {
     String[] parts = requestLine.split(" ");
-    if (parts.length < 3) {
-      throw new IOException("Invalid request line: " + requestLine);
+    if (parts.length != 3) {
+      throw new IOException("Invalid request line (expected exactly 3 parts): " + requestLine);
     }
     
     // Parse method
@@ -147,6 +147,9 @@ public class HTTPRequest {
             this.contentLength = 0;
           }
         }
+      } else {
+        // Invalid header: no colon found
+        throw new IOException("Invalid header format: " + line);
       }
     }
   }
