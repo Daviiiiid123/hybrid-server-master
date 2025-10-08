@@ -94,7 +94,7 @@ public class HTTPResponse {
   }
 
   public void print(Writer writer) throws IOException {
-  PrintWriter printWriter = new PrintWriter(writer, true);
+  PrintWriter printWriter = new PrintWriter(writer, false); // Disable auto-flush to prevent issues
 
   // Status line
   printWriter.print(version + " " + getStatusCode(status) + " " + getStatusMessage(status) + "\r\n");
@@ -122,6 +122,7 @@ public class HTTPResponse {
   printWriter.print("\r\n");
   if (!contentEmpty) {
     printWriter.print(content);
+    // Ensure we don't add extra newline
   }
 
   printWriter.flush();

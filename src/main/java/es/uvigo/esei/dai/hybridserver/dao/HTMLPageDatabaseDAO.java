@@ -46,7 +46,7 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
     
     private void initializeDatabase() {
         final String createTableSQL = 
-            "CREATE TABLE IF NOT EXISTS html_pages (" +
+            "CREATE TABLE IF NOT EXISTS HTML (" +
             "uuid VARCHAR(36) PRIMARY KEY, " +
             "content TEXT NOT NULL, " +
             "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
@@ -71,7 +71,7 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
     @Override
     public Map<String, String> getAllPages() {
         Map<String, String> pages = new HashMap<>();
-        final String sql = "SELECT uuid, content FROM html_pages";
+        final String sql = "SELECT uuid, content FROM HTML";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -94,7 +94,7 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
             return null;
         }
         
-        final String sql = "SELECT content FROM html_pages WHERE uuid = ?";
+        final String sql = "SELECT content FROM HTML WHERE uuid = ?";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -120,7 +120,7 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
             return false;
         }
         
-        final String sql = "INSERT INTO html_pages (uuid, content) VALUES (?, ?) " +
+        final String sql = "INSERT INTO HTML (uuid, content) VALUES (?, ?) " +
                           "ON DUPLICATE KEY UPDATE content = VALUES(content), updated_at = CURRENT_TIMESTAMP";
         
         try (Connection conn = getConnection();
@@ -144,7 +144,7 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
             return false;
         }
         
-        final String sql = "DELETE FROM html_pages WHERE uuid = ?";
+        final String sql = "DELETE FROM HTML WHERE uuid = ?";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -166,7 +166,7 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
             return false;
         }
         
-        final String sql = "SELECT 1 FROM html_pages WHERE uuid = ? LIMIT 1";
+        final String sql = "SELECT 1 FROM HTML WHERE uuid = ? LIMIT 1";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
