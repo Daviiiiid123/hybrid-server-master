@@ -120,7 +120,7 @@ public class HybridServer implements AutoCloseable {
 
               System.out.println("Nueva conexión aceptada desde: " + socket.getRemoteSocketAddress());
               // Usar pool de hilos para manejar cada cliente
-              threadPool.submit(new ServiceThread(socket, HybridServer.this));
+              threadPool.execute(new ServiceThread(socket, HybridServer.this));
             } catch (IOException e) {
               if (!stop) {
                 System.err.println("Error aceptando conexión: " + e.getMessage());
