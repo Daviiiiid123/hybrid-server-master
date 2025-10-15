@@ -25,13 +25,15 @@ import java.util.Properties;
 
 public class Launcher {
   public static void main(String[] args) {
+    System.out.println(args[0]);
+    
     HybridServer server = null;
     
     // Validar parámetros de entrada
     if (args.length > 1) {
       System.err.println("Error: Demasiados parámetros.");
       System.err.println("Uso: java es.uvigo.esei.dai.hybridserver.Launcher [archivo_configuracion]");
-      System.exit(1);
+      System.exit(1); 
     }
     
     try {
@@ -42,9 +44,10 @@ public class Launcher {
           properties.load(fis);
         }
         server = new HybridServer(properties);
-        System.out.println("Servidor iniciado con configuración desde: " + args[0]);
+        System.out.println("Servidor iniciado con BASE DE DATOS configuración desde: " + args[0]);
       } else {
         // Crear algunas páginas HTML de ejemplo por defecto
+        System.out.println("Paginas de memoria");
         Map<String, String> pages = new HashMap<>();
         
         pages.put("page1", 
