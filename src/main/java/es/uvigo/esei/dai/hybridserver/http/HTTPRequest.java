@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.net.URLDecoder;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class HTTPRequest {
@@ -39,7 +38,7 @@ public class HTTPRequest {
   public HTTPRequest(Reader reader) throws IOException, HTTPParseException {
   this.resourceParameters = new HashMap<>();
   // preserve header insertion order so toString outputs headers in the same order they were read
-  this.headerParameters = new LinkedHashMap<>();
+  this.headerParameters = new HashMap<>();
   this.contentLength = 0;
   // when there is no content, tests expect null
   this.content = null;
