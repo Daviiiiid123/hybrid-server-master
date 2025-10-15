@@ -49,7 +49,7 @@
 	</developers>
 
 	<properties>
-		<group.name>2.1</group.name>
+		<group.name>2.6</group.name>
 
 		<maven.compiler.source>11</maven.compiler.source>
 		<maven.compiler.target>11</maven.compiler.target>
