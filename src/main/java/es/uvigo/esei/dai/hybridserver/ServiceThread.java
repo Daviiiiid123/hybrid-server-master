@@ -230,7 +230,7 @@ public class ServiceThread implements Runnable {
     private HTTPResponse createWelcomePage() {
         HTTPResponse response = new HTTPResponse();
         response.setStatus(HTTPResponseStatus.S200);
-        response.putParameter("Content-Type", "text/html");
+        response.putParameter("Content-Type", "text/html"); //CSS ---------------------------------------------------------------------
         
         String html = "<html>" +
                      "<head><title>Pagina Principal - Hybrid Server</title></head>" +
@@ -254,7 +254,7 @@ public class ServiceThread implements Runnable {
         response.setStatus(HTTPResponseStatus.S200);
         response.putParameter("Content-Type", "text/html");
         
-        StringBuilder html = new StringBuilder();
+        StringBuilder html = new StringBuilder();   //CSS-----------------------------------------------------
         html.append("<html>");
         html.append("<head><title>Lista de Paginas</title></head>");
         html.append("<body style='background-color: #f0f8ff; font-family: Arial; padding: 30px;'>");
@@ -266,7 +266,7 @@ public class ServiceThread implements Runnable {
             HTMLPageDAO pageDAO = server.getPageDAO();
             Map<String, String> pages = pageDAO.getAllPages();
             
-            if (pages != null && !pages.isEmpty()) {
+            if (pages != null && !pages.isEmpty()) {    //CSS
                 for (String uuid : pages.keySet()) {
                     html.append("<li style='margin: 10px 0; padding: 10px; background-color: #e6f2ff; border-left: 4px solid #4169e1;'>");
                     html.append("<a href='/html?uuid=").append(uuid).append("' style='text-decoration: none; color: #2c5aa0; font-weight: bold;'>")
