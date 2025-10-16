@@ -33,7 +33,8 @@ import es.uvigo.esei.dai.hybridserver.http.HTTPResponseStatus;
 public class ServiceThread implements Runnable {
     // Socket asociado al cliente que atiende este hilo
     private final Socket socket;
-    // Referencia al servidor principal para acceder a recursos compartidos (p.ej. mapa de páginas)
+    // Referencia al servidor principal para acceder a recursos compartidos (p.ej.
+    // mapa de páginas)
     private final HybridServer server;
 
     public ServiceThread(Socket socket, HybridServer server) {
@@ -46,27 +47,30 @@ public class ServiceThread implements Runnable {
         // Abrimos flujos de lectura/escritura ligados al socket del cliente.
         // Se usan dentro del try-with-resources para cerrarlos automáticamente.
         try (InputStreamReader reader = new InputStreamReader(socket.getInputStream(), "UTF-8");
-             OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream(), "UTF-8")) {
+                OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream(), "UTF-8")) {
 
             System.out.println("[ServiceThread] Iniciando procesamiento de petición");
-            
+
             // Parsear la petición HTTP recibida desde el cliente
             HTTPRequest request = new HTTPRequest(reader);
-            
-            System.out.println("[ServiceThread] Petición parseada: " + request.getMethod() + " " + request.getResourceName());
+
+            System.out.println(
+                    "[ServiceThread] Petición parseada: " + request.getMethod() + " " + request.getResourceName());
 
             // Procesar la petición y obtener la respuesta correspondiente
             HTTPResponse response = processRequest(request);
-            
+
             System.out.println("[ServiceThread] Respuesta generada: " + response.getStatus());
             System.out.println("[ServiceThread] Content-Type: " + response.getParameters().get("Content-Type"));
             System.out.println("[ServiceThread] Content-Length: " + response.getParameters().get("Content-Length"));
-            System.out.println("[ServiceThread] Contenido (primeros 100 chars): " + 
-                (response.getContent() != null ? response.getContent().substring(0, Math.min(100, response.getContent().length())) : "null"));
+            System.out.println("[ServiceThread] Contenido (primeros 100 chars): " +
+                    (response.getContent() != null
+                            ? response.getContent().substring(0, Math.min(100, response.getContent().length()))
+                            : "null"));
 
             // Enviar la respuesta al cliente
             response.print(writer);
-            
+
             System.out.println("[ServiceThread] Respuesta enviada correctamente");
 
         } catch (Exception e) {
@@ -133,7 +137,8 @@ public class ServiceThread implements Runnable {
 
         if ("html".equals(path) || "/html".equals(path)) {
             // -- Manejo de POST sobre /html --
-            // Se espera que el cuerpo esté codificado como application/x-www-form-urlencoded
+            // Se espera que el cuerpo esté codificado como
+            // application/x-www-form-urlencoded
             // y que tenga el parámetro 'html' con el contenido HTML a almacenar.
             String htmlParam = request.getResourceParameters().get("html");
 
@@ -148,7 +153,7 @@ public class ServiceThread implements Runnable {
             // Guardar la página usando el DAO
             HTMLPageDAO pageDAO = server.getPageDAO();
             boolean saved = pageDAO.savePage(uuid, htmlParam);
-            
+
             if (!saved) {
                 return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
             }
@@ -164,7 +169,8 @@ public class ServiceThread implements Runnable {
             html.append("<head><title>Page Created</title></head>");
             html.append("<body>");
             html.append("<h1>Page created</h1>");
-            html.append("<p>New page id: <a href=\"html?uuid=").append(uuid).append("\">").append(uuid).append("</a></p>");
+            html.append("<p>New page id: <a href=\"html?uuid=").append(uuid).append("\">").append(uuid)
+                    .append("</a></p>");
             html.append("<p><a href=\"/html\">Ver lista de páginas</a></p>");
             html.append("</body>");
             html.append("</html>");
@@ -181,38 +187,38 @@ public class ServiceThread implements Runnable {
 
         if ("html".equals(path) || "/html".equals(path)) {
             String uuid = request.getResourceParameters().get("uuid");
-            
+
             System.out.println("[DELETE] UUID solicitado: " + uuid);
-            
+
             if (uuid == null || uuid.isEmpty()) {
                 return createErrorResponse(HTTPResponseStatus.S400, "Bad Request - UUID parameter required");
             }
 
             try {
                 HTMLPageDAO pageDAO = server.getPageDAO();
-                
+
                 // Debug: verificar si la página existe
                 boolean exists = pageDAO.pageExists(uuid);
                 System.out.println("[DELETE] Página existe? " + exists);
-                
+
                 boolean deleted = pageDAO.deletePage(uuid);
                 System.out.println("[DELETE] Página eliminada? " + deleted);
-                
+
                 if (deleted) {
                     HTTPResponse response = new HTTPResponse();
                     response.setStatus(HTTPResponseStatus.S200);
                     response.putParameter("Content-Type", "text/html");
-                    
+
                     String html = "<html>" +
-                                 "<head><title>Page Deleted</title></head>" +
-                                 "<body>" +
-                                 "<h1>Page Deleted</h1>" +
-                                 "<p>The page with UUID " + uuid + " has been successfully deleted.</p>" +
-                                 "<p><a href='/html'>Ver lista de páginas</a></p>" +
-                                 "<p><a href='/'>Volver al inicio</a></p>" +
-                                 "</body>" +
-                                 "</html>";
-                    
+                            "<head><title>Page Deleted</title></head>" +
+                            "<body>" +
+                            "<h1>Page Deleted</h1>" +
+                            "<p>The page with UUID " + uuid + " has been successfully deleted.</p>" +
+                            "<p><a href='/html'>Ver lista de páginas</a></p>" +
+                            "<p><a href='/'>Volver al inicio</a></p>" +
+                            "</body>" +
+                            "</html>";
+
                     response.setContent(html);
                     return response;
                 } else {
@@ -230,21 +236,37 @@ public class ServiceThread implements Runnable {
     private HTTPResponse createWelcomePage() {
         HTTPResponse response = new HTTPResponse();
         response.setStatus(HTTPResponseStatus.S200);
-        response.putParameter("Content-Type", "text/html"); //CSS ---------------------------------------------------------------------
-        
+        response.putParameter("Content-Type", "text/html"); // CSS
+                                                            // ---------------------------------------------------------------------
         String html = "<html>" +
-                     "<head><title>Pagina Principal - Hybrid Server</title></head>" +
-                     "<body style='background-color: #fff8dc; font-family: Arial; text-align: center; padding: 50px;'>" +
-                     "<h1 style='color: #8b4513;'>Hybrid Server</h1>" +
-                     "<h2>Servidor HTTP en Java</h2>" +
-                     "<p style='font-size: 18px;'>Bienvenido al servidor hibrido de paginas HTML</p>" +
-                     "<div style='margin-top: 30px;'>" +
-                     "<a href='/html' style='background-color: #4CAF50; color: white; padding: 15px 32px; text-decoration: none; font-size: 16px; border-radius: 5px;'>" +
-                     "Ver Lista de Paginas</a>" +
-                     "</div>" +
-                     "</body>" +
-                     "</html>";
-        
+             "<head><title>Pagina Principal - Hybrid Server</title></head>" +
+             "<body>" +
+             "<h1>Hybrid Server</h1>" +
+             "<h2>Servidor HTTP en Java</h2>" +
+             "<p>Bienvenido al servidor hibrido de paginas HTML</p>" +
+             "<div>" +
+             "<a href='/html'>Ver Lista de Paginas</a>" +
+             "</div>" +
+             "</body>" +
+             "</html>";
+             /*
+
+        String html = "<html>" +
+                "<head><title>Pagina Principal - Hybrid Server</title></head>" +
+                // "<body style='background-color: #fff8dc; font-family: Arial; text-align:
+                // center; padding: 50px;'>" +
+                // "<h1 style='color: #8b4513;'>Hybrid Server</h1>" +
+                "<h2>Servidor HTTP en Java</h2>" +
+                // "<p style='font-size: 18px;'>Bienvenido al servidor hibrido de paginas
+                // HTML</p>" +
+                // "<div style='margin-top: 30px;'>" +
+                // "<a href='/html' style='background-color: #4CAF50; color: white; padding:
+                // 15px 32px; text-decoration: none; font-size: 16px; border-radius: 5px;'>" +
+                "Ver Lista de Paginas</a>" +
+                "</div>" +
+                "</body>" +
+                "</html>";
+ */
         response.setContent(html);
         return response;
     }
@@ -253,39 +275,82 @@ public class ServiceThread implements Runnable {
         HTTPResponse response = new HTTPResponse();
         response.setStatus(HTTPResponseStatus.S200);
         response.putParameter("Content-Type", "text/html");
-        
-        StringBuilder html = new StringBuilder();   //CSS-----------------------------------------------------
+
+        StringBuilder html = new StringBuilder(); // CSS-----------------------------------------------------
+
         html.append("<html>");
         html.append("<head><title>Lista de Paginas</title></head>");
-        html.append("<body style='background-color: #f0f8ff; font-family: Arial; padding: 30px;'>");
-        html.append("<h1 style='color: #4169e1;'>Lista de Paginas HTML Disponibles</h1>");
-        html.append("<div style='background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);'>");
-        html.append("<ul style='list-style-type: none; padding: 0;'>");
+        html.append("<body>");
+        html.append("<h1>Lista de Paginas HTML Disponibles</h1>");
+        html.append("<div>");
+        html.append("<ul>");
 
+        /*
+         * html.append("<html>");
+         * html.append("<head><title>Lista de Paginas</title></head>");
+         * html.
+         * append("<body style='background-color: #f0f8ff; font-family: Arial; padding: 30px;'>"
+         * );
+         * html.
+         * append("<h1 style='color: #4169e1;'>Lista de Paginas HTML Disponibles</h1>");
+         * html.
+         * append("<div style='background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);'>"
+         * );
+         * html.append("<ul style='list-style-type: none; padding: 0;'>");
+         */
         try {
             HTMLPageDAO pageDAO = server.getPageDAO();
             Map<String, String> pages = pageDAO.getAllPages();
-            
-            if (pages != null && !pages.isEmpty()) {    //CSS
+
+            if (pages != null && !pages.isEmpty()) {
                 for (String uuid : pages.keySet()) {
-                    html.append("<li style='margin: 10px 0; padding: 10px; background-color: #e6f2ff; border-left: 4px solid #4169e1;'>");
-                    html.append("<a href='/html?uuid=").append(uuid).append("' style='text-decoration: none; color: #2c5aa0; font-weight: bold;'>")
-                        .append(uuid).append("</a>");
+                    html.append("<li>");
+                    html.append("<a href='/html?uuid=").append(uuid).append("'>")
+                            .append(uuid).append("</a>");
                     html.append("</li>");
                 }
             } else {
-                html.append("<li style='color: #888;'>No hay paginas disponibles</li>");
+                html.append("<li>No hay paginas disponibles</li>");
             }
         } catch (Exception e) {
-            html.append("<li style='color: red;'>Error accediendo a las paginas: ").append(e.getMessage()).append("</li>");
+            html.append("<li>Error accediendo a las paginas: ").append(e.getMessage()).append("</li>");
         }
+
+        /*
+         * if (pages != null && !pages.isEmpty()) { //CSS
+         * for (String uuid : pages.keySet()) {
+         * html.
+         * append("<li style='margin: 10px 0; padding: 10px; background-color: #e6f2ff; border-left: 4px solid #4169e1;'>"
+         * );
+         * html.append("<a href='/html?uuid=").append(uuid).
+         * append("' style='text-decoration: none; color: #2c5aa0; font-weight: bold;'>"
+         * )
+         * .append(uuid).append("</a>");
+         * html.append("</li>");
+         * }
+         * } else {
+         * html.append("<li style='color: #888;'>No hay paginas disponibles</li>");
+         * }
+         * } catch (Exception e) {
+         * html.append("<li style='color: red;'>Error accediendo a las paginas: ").
+         * append(e.getMessage()).append("</li>");
+         * }
+         */
 
         html.append("</ul>");
         html.append("</div>");
-        html.append("<p style='margin-top: 20px;'><a href='/' style='color: #4169e1;'>Volver al inicio</a></p>");
+        html.append("<p><a href='/'>Volver al inicio</a></p>");
         html.append("</body>");
         html.append("</html>");
-        
+        /*
+         * html.append("</ul>");
+         * html.append("</div>");
+         * html.
+         * append("<p style='margin-top: 20px;'><a href='/' style='color: #4169e1;'>Volver al inicio</a></p>"
+         * );
+         * html.append("</body>");
+         * html.append("</html>");
+         */
         response.setContent(html.toString());
         return response;
     }
@@ -294,7 +359,7 @@ public class ServiceThread implements Runnable {
         try {
             HTMLPageDAO pageDAO = server.getPageDAO();
             String content = pageDAO.getPage(uuid);
-            
+
             if (content != null) {
                 HTTPResponse response = new HTTPResponse();
                 response.setStatus(HTTPResponseStatus.S200);
@@ -314,15 +379,15 @@ public class ServiceThread implements Runnable {
         HTTPResponse response = new HTTPResponse();
         response.setStatus(status);
         response.putParameter("Content-Type", "text/html");
-        
+
         String html = "<html>" +
-                     "<head><title>" + getStatusCode(status) + " " + message + "</title></head>" +
-                     "<body>" +
-                     "<h1>" + getStatusCode(status) + " " + message + "</h1>" +
-                     "<p><a href='/'>Volver al inicio</a></p>" +
-                     "</body>" +
-                     "</html>";
-        
+                "<head><title>" + getStatusCode(status) + " " + message + "</title></head>" +
+                "<body>" +
+                "<h1>" + getStatusCode(status) + " " + message + "</h1>" +
+                "<p><a href='/'>Volver al inicio</a></p>" +
+                "</body>" +
+                "</html>";
+
         response.setContent(html);
         return response;
     }
