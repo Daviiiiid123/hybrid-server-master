@@ -64,7 +64,7 @@ public class ServiceThread implements Runnable {
             System.out.println("[ServiceThread] Respuesta generada: " + response.getStatus());
             System.out.println("[ServiceThread] Content-Type: " + response.getParameters().get("Content-Type"));
             System.out.println("[ServiceThread] Content-Length: " + response.getParameters().get("Content-Length"));
-            System.out.println("[ServiceThread] Contenido (primeros 100 chars): " +
+            System.out.println("[ServiceThread] Contenido : " +
                     (response.getContent() != null
                             ? response.getContent().substring(0, Math.min(100, response.getContent().length()))
                             : "null"));
@@ -142,6 +142,7 @@ public class ServiceThread implements Runnable {
             // Se espera que el cuerpo esté codificado como
             // application/x-www-form-urlencoded
             // y que tenga el parámetro 'html' con el contenido HTML a almacenar.
+            //String htmlParam = request.getResourceParameters().get("content");
             String htmlParam = request.getResourceParameters().get("html");
 
             // Si falta el parámetro 'html' devolvemos 400 Bad Request

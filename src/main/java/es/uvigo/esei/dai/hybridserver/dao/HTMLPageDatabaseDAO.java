@@ -48,9 +48,7 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
         final String createTableSQL = 
             "CREATE TABLE IF NOT EXISTS HTML (" +
             "uuid VARCHAR(36) PRIMARY KEY, " +
-            "content TEXT NOT NULL, " +
-            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-            "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
+            "content TEXT NOT NULL " +
             ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         
         try (Connection conn = getConnection();
@@ -121,7 +119,7 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
         }
         
         final String sql = "INSERT INTO HTML (uuid, content) VALUES (?, ?) " +
-                          "ON DUPLICATE KEY UPDATE content = VALUES(content), updated_at = CURRENT_TIMESTAMP";
+                          "ON DUPLICATE KEY UPDATE content = VALUES(content)";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
