@@ -38,9 +38,7 @@ public class HTTPResponse {
     this.content = "";
     this.parameters = new HashMap<>();
 
-    // Default headers
-    // this.parameters.put("Content-Type", "text/html; charset=UTF-8");
-    // this.parameters.put("Server", "HybridServer/1.0");
+    
   }
 
   public HTTPResponseStatus getStatus() {
@@ -122,7 +120,7 @@ public class HTTPResponse {
     printWriter.print("\r\n");
     if (!contentEmpty) {
       printWriter.print(content);
-      // Ensure we don't add extra newline
+      
     }
 
     printWriter.flush();

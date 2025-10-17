@@ -33,7 +33,6 @@ public class HybridServer implements AutoCloseable {
   private static final int SERVICE_PORT = 8888;
   private Thread serverThread;
   private boolean stop;
-  //Nuevos atributos para A1
   private final ExecutorService threadPool;
   private final int numClients;
   private HTMLPageDAO pageDAO; // DAO para almacenamiento de páginas
