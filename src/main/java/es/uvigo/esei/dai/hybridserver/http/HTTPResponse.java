@@ -31,16 +31,16 @@ public class HTTPResponse {
   private String version;
   private String content;
   private final Map<String, String> parameters;
-  
+
   public HTTPResponse() {
     this.status = HTTPResponseStatus.S200;
     this.version = "HTTP/1.1";
     this.content = "";
     this.parameters = new HashMap<>();
-    
+
     // Default headers
-    //this.parameters.put("Content-Type", "text/html; charset=UTF-8");
-    //this.parameters.put("Server", "HybridServer/1.0");
+    // this.parameters.put("Content-Type", "text/html; charset=UTF-8");
+    // this.parameters.put("Server", "HybridServer/1.0");
   }
 
   public HTTPResponseStatus getStatus() {
@@ -94,55 +94,63 @@ public class HTTPResponse {
   }
 
   public void print(Writer writer) throws IOException {
-  PrintWriter printWriter = new PrintWriter(writer, false); // Disable auto-flush to prevent issues
+    PrintWriter printWriter = new PrintWriter(writer, false); // Disable auto-flush to prevent issues
 
-  // Status line
-  printWriter.print(version + " " + getStatusCode(status) + " " + getStatusMessage(status) + "\r\n");
+    // Status line
+    printWriter.print(version + " " + getStatusCode(status) + " " + getStatusMessage(status) + "\r\n");
 
-  boolean contentEmpty = (content == null || content.isEmpty());
+    boolean contentEmpty = (content == null || content.isEmpty());
 
-  // Sólo actualizar Content-Length si hay contenido
-  if (!contentEmpty) {
-    putParameter("Content-Length", String.valueOf(content.getBytes("UTF-8").length));
-  }
+    // Sólo actualizar Content-Length si hay contenido
+    if (!contentEmpty) {
+      putParameter("Content-Length", String.valueOf(content.getBytes("UTF-8").length));
+    }
 
-  // Si no hay parámetros a imprimir (map vacío) -> línea en blanco y fin
-  if (parameters.isEmpty()) {
+    // Si no hay parámetros a imprimir (map vacío) -> línea en blanco y fin
+    if (parameters.isEmpty()) {
+      printWriter.print("\r\n");
+      printWriter.flush();
+      return;
+    }
+
+    // Imprimir cabeceras existentes (solo las que el objeto tiene)
+    for (Map.Entry<String, String> param : parameters.entrySet()) {
+      printWriter.print(param.getKey() + ": " + param.getValue() + "\r\n");
+    }
+
+    // Separador y posible cuerpo
     printWriter.print("\r\n");
+    if (!contentEmpty) {
+      printWriter.print(content);
+      // Ensure we don't add extra newline
+    }
+
     printWriter.flush();
-    return;
   }
 
-  // Imprimir cabeceras existentes (solo las que el objeto tiene)
-  for (Map.Entry<String, String> param : parameters.entrySet()) {
-    printWriter.print(param.getKey() + ": " + param.getValue() + "\r\n");
-  }
-
-  // Separador y posible cuerpo
-  printWriter.print("\r\n");
-  if (!contentEmpty) {
-    printWriter.print(content);
-    // Ensure we don't add extra newline
-  }
-
-  printWriter.flush();
-}
-  
   private int getStatusCode(HTTPResponseStatus status) {
     String statusName = status.name();
     return Integer.parseInt(statusName.substring(1)); // Remove 'S' prefix
   }
-  
+
   private String getStatusMessage(HTTPResponseStatus status) {
     switch (status) {
-      case S200: return "OK";
-      case S201: return "Created";
-      case S204: return "No Content";
-      case S400: return "Bad Request";
-      case S404: return "Not Found";
-      case S405: return "Method Not Allowed";
-      case S500: return "Internal Server Error";
-      default: return "Unknown";
+      case S200:
+        return "OK";
+      case S201:
+        return "Created";
+      case S204:
+        return "No Content";
+      case S400:
+        return "Bad Request";
+      case S404:
+        return "Not Found";
+      case S405:
+        return "Method Not Allowed";
+      case S500:
+        return "Internal Server Error";
+      default:
+        return "Unknown";
     }
   }
 

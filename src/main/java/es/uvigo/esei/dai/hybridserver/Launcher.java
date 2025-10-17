@@ -52,8 +52,6 @@ public class Launcher {
         
         pages.put("page1", 
             "<html><head><title>Pagina 1 - Gatos</title></head>" +
-           // "<body style='background-color: #ffe4e1; font-family: Arial;'>" +
-           // "<h1 style='color: #ff6347;'>Pagina de los Gatos</h1>" +
             "<p>Los gatos son animales adorables y misteriosos.</p>" +
             "<p>Caracteristicas de los gatos:</p>" +
             "<ul>" +
@@ -66,8 +64,6 @@ public class Launcher {
             
         pages.put("page2", 
             "<html><head><title>Pagina 2 - Programacion</title></head>" +
-            //"<body style='background-color: #e6f3ff; font-family: Courier;'>" +
-           // "<h1 style='color: #0066cc;'>Mundo de la Programacion</h1>" +
             "<p>La programacion es el arte de resolver problemas con codigo.</p>" +
             "<p>Lenguajes populares:</p>" +
             "<ol>" +
@@ -80,8 +76,6 @@ public class Launcher {
             
         pages.put("welcome", 
             "<html><head><title>Bienvenida - Hybrid Server</title></head>" +
-           // "<body style='background-color: #f0fff0; font-family: Verdana;'>" +
-           // "<h1 style='color: #228b22;'>Bienvenido al Hybrid Server!</h1>" +
             "<p>Este es un servidor HTTP desarrollado en Java.</p>" +
             "<p>Explora nuestras paginas:</p>" +
             "<ul>" +
