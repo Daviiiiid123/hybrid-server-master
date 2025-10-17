@@ -36,11 +36,8 @@ public class HTTPRequest {
 
   public HTTPRequest(Reader reader) throws IOException, HTTPParseException {
     this.resourceParameters = new HashMap<>();
-    // preserve header insertion order so toString outputs headers in the same order
-    // they were read
     this.headerParameters = new HashMap<>();
     this.contentLength = 0;
-    // when there is no content, tests expect null
     this.content = null;
 
     try {
@@ -53,7 +50,6 @@ public class HTTPRequest {
   private void parseRequest(Reader reader) throws IOException {
     BufferedReader bufferedReader = new BufferedReader(reader);
 
-    // Parse request line: METHOD /resource?params HTTP/1.1
     String requestLine = bufferedReader.readLine();
     if (requestLine == null || requestLine.trim().isEmpty()) {
       throw new IOException("Empty request line");
@@ -61,10 +57,8 @@ public class HTTPRequest {
 
     parseRequestLine(requestLine);
 
-    // Parse headers
     parseHeaders(bufferedReader);
 
-    // Read content if exists
     if (contentLength > 0) {
       parseContent(bufferedReader);
     }
@@ -76,18 +70,15 @@ public class HTTPRequest {
       throw new IOException("Invalid request line (expected exactly 3 parts): " + requestLine);
     }
 
-    // Parse method
     try {
       this.method = HTTPRequestMethod.valueOf(parts[0].toUpperCase());
     } catch (IllegalArgumentException e) {
       throw new IOException("Unsupported HTTP method: " + parts[0]);
     }
 
-    // Parse resource and parameters
     this.resourceChain = parts[1];
     parseResource(parts[1]);
 
-    // Parse HTTP version
     this.httpVersion = parts[2];
   }
 
@@ -104,8 +95,7 @@ public class HTTPRequest {
   private String normalizeResourceName(String rawName) {
     if (rawName == null)
       return null;
-    // strip leading slash for resourceName to match tests (e.g.,
-    // "hello/world.html")
+
     if (rawName.startsWith("/")) {
       return rawName.substring(1);
     }
@@ -125,7 +115,7 @@ public class HTTPRequest {
           String value = URLDecoder.decode(keyValue[1], "UTF-8");
           resourceParameters.put(key, value);
         } catch (Exception e) {
-          // Skip malformed parameters
+         
         }
       }
     }
@@ -138,10 +128,10 @@ public class HTTPRequest {
       if (colonIndex > 0) {
         String headerName = line.substring(0, colonIndex).trim();
         String headerValue = line.substring(colonIndex + 1).trim();
-        // store header names using the original case as provided in the request
+        
         headerParameters.put(headerName, headerValue);
 
-        // Capture Content-Length
+       
         if ("content-length".equals(headerName.toLowerCase())) {
           try {
             this.contentLength = Integer.parseInt(headerValue);
@@ -150,7 +140,6 @@ public class HTTPRequest {
           }
         }
       } else {
-        // Invalid header: no colon found
         throw new IOException("Invalid header format: " + line);
       }
     }

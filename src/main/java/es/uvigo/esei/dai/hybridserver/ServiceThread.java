@@ -129,7 +129,7 @@ public class ServiceThread implements Runnable {
                 return createPageList();
             }
         } else {
-            // Invalid resource path - return 400 Bad Request
+           
             return createErrorResponse(HTTPResponseStatus.S400, "Bad Request");
         }
     }
@@ -142,7 +142,7 @@ public class ServiceThread implements Runnable {
             // Se espera que el cuerpo esté codificado como
             // application/x-www-form-urlencoded
             // y que tenga el parámetro 'html' con el contenido HTML a almacenar.
-            //String htmlParam = request.getResourceParameters().get("content");
+            
             String htmlParam = request.getResourceParameters().get("html");
 
             // Si falta el parámetro 'html' devolvemos 400 Bad Request
@@ -164,7 +164,7 @@ public class ServiceThread implements Runnable {
             // Preparar la respuesta HTML informando del recurso creado y proporcionando
             // un enlace para acceder a él (/html?uuid=<uuid>)
             HTTPResponse response = new HTTPResponse();
-            response.setStatus(HTTPResponseStatus.S200); // 200 OK (test expects this instead of 201)
+            response.setStatus(HTTPResponseStatus.S200); // 200 OK 
             response.putParameter("Content-Type", "text/html");
 
             StringBuilder html = new StringBuilder();
@@ -200,7 +200,7 @@ public class ServiceThread implements Runnable {
             try {
                 HTMLPageDAO pageDAO = server.getPageDAO();
 
-                // Debug: verificar si la página existe
+                // verificar si la página existe
                 boolean exists = pageDAO.pageExists(uuid);
                 System.out.println("[DELETE] Página existe? " + exists);
 
