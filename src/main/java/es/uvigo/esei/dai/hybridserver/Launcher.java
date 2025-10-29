@@ -19,8 +19,6 @@ package es.uvigo.esei.dai.hybridserver;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 
 public class Launcher {
@@ -46,47 +44,11 @@ public class Launcher {
         server = new HybridServer(properties);
         System.out.println("Servidor iniciado con BASE DE DATOS configuración desde: " + args[0]);
       } else {
-        // Crear algunas páginas HTML de ejemplo por defecto
-        System.out.println("Paginas de memoria");
-        Map<String, String> pages = new HashMap<>();
-        
-        pages.put("page1", 
-            "<html><head><title>Pagina 1 - Gatos</title></head>" +
-            "<p>Los gatos son animales adorables y misteriosos.</p>" +
-            "<p>Caracteristicas de los gatos:</p>" +
-            "<ul>" +
-            "<li>Independientes</li>" +
-            "<li>Carinosos</li>" +
-            "<li>Curiosos</li>" +
-            "</ul>" +
-            "<p><a href='/html'>Volver a la lista</a></p>" +
-            "</body></html>");
-            
-        pages.put("page2", 
-            "<html><head><title>Pagina 2 - Programacion</title></head>" +
-            "<p>La programacion es el arte de resolver problemas con codigo.</p>" +
-            "<p>Lenguajes populares:</p>" +
-            "<ol>" +
-            "<li>Python</li>" +
-            "<li>Java</li>" +
-            "<li>JavaScript</li>" +
-            "</ol>" +
-            "<p><a href='/html'>Volver a la lista</a></p>" +
-            "</body></html>");
-            
-        pages.put("welcome", 
-            "<html><head><title>Bienvenida - Hybrid Server</title></head>" +
-            "<p>Este es un servidor HTTP desarrollado en Java.</p>" +
-            "<p>Explora nuestras paginas:</p>" +
-            "<ul>" +
-            "<li><a href='/html?uuid=page1'>Pagina de los Gatos</a></li>" +
-            "<li><a href='/html?uuid=page2'>Mundo de la Programacion</a></li>" +
-            "</ul>" +
-            "<p><a href='/html'>Ver todas las paginas</a></p>" +
-            "</body></html>");
-
-        server = new HybridServer(pages);
-        System.out.println("Servidor iniciado con páginas de ejemplo");
+       //  Si no hay argumentos, se usa la configuración por defecto.
+       // Se llama al constructor vacío, que usa por defecto.
+            System.out.println("Servidor iniciado con configuración por defecto ");
+            server = new HybridServer();
+       
       }
       
       System.out.println("Hybrid Server iniciado en puerto " + server.getPort());
@@ -94,28 +56,23 @@ public class Launcher {
       System.out.println("  - Página principal: http://localhost:" + server.getPort() + "/");
       System.out.println("  - Lista de páginas: http://localhost:" + server.getPort() + "/html");
       
-      try {
-        Map<String, String> pages = server.getPageDAO().getAllPages();
-        if (pages != null && !pages.isEmpty()) {
-          System.out.println("Páginas de ejemplo:");
-          for (String uuid : pages.keySet()) {
-            System.out.println("  - http://localhost:" + server.getPort() + "/html?uuid=" + uuid);
+      //añadir ShutDown Hook
+      //se ejecutara cuando la JVM se detenga (ej con Ctrl+C)
+
+
+      //PREGUNTAR SI ESTA ES LA FORMA QUE QUIEREN Q USEMOS PARA CERRAR EL SERVIDOR
+      final HybridServer finalServer = server; //// Necesario para usarlo en la lambda
+      Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+          System.out.println("\nDetectada señal de cierre. Deteniendo servidor ...");
+
+          if(finalServer != null){
+            finalServer.close();
+            System.out.println("Servidor detenido");
           }
-        }
-      } catch (Exception e) {
-        System.out.println("No se pudieron listar las páginas: " + e.getMessage());
-      }
-      
-      System.out.println("\nPresiona Enter para detener el servidor...");
+      }));
       
       server.start();
       
-      // Esperar input del usuario para detener el servidor
-      try {
-        System.in.read();
-      } catch (IOException e) {
-        System.err.println("Error leyendo entrada: " + e.getMessage());
-      }
       
     } catch (IOException e) {
       System.err.println("Error al iniciar el servidor: " + e.getMessage());
@@ -123,12 +80,6 @@ public class Launcher {
     } catch (Exception e) {
       System.err.println("Error inesperado: " + e.getMessage());
       e.printStackTrace();
-    } finally {
-      if (server != null) {
-        System.out.println("Deteniendo servidor...");
-        server.close();
-        System.out.println("Servidor detenido.");
-      }
-    }
+    } 
   }
 }

@@ -41,9 +41,9 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
         this.dbPassword = dbPassword;
         
         // Intentar crear la tabla si no existe
-        initializeDatabase();
+        //initializeDatabase();
     }
-    
+    /*
     private void initializeDatabase() {
         final String createTableSQL = 
             "CREATE TABLE IF NOT EXISTS HTML (" +
@@ -61,13 +61,13 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
             System.err.println("Error inicializando la base de datos: " + e.getMessage());
         }
     }
-    
+     */
     private Connection getConnection() throws SQLException {
         return DriverManager.getConnection(dbUrl, dbUser, dbPassword);
     }
     
     @Override
-    public Map<String, String> getAllPages() {
+    public Map<String, String> getAllPages() throws SQLException{
         Map<String, String> pages = new HashMap<>();
         final String sql = "SELECT uuid, content FROM HTML";
         
@@ -79,15 +79,15 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
                 pages.put(rs.getString("uuid"), rs.getString("content"));
             }
             
-        } catch (SQLException e) {
+        } /*catch (SQLException e) {
             System.err.println("Error obteniendo todas las páginas: " + e.getMessage());
-        }
+        }*/
         
         return pages;
     }
     
     @Override
-    public String getPage(String uuid) {
+    public String getPage(String uuid) throws SQLException{
         if (uuid == null) {
             return null;
         }
@@ -105,22 +105,23 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
                 }
             }
             
-        } catch (SQLException e) {
+        } /*catch (SQLException e) {
             System.err.println("Error obteniendo página " + uuid + ": " + e.getMessage());
-        }
+        }*/
         
         return null;
     }
     
     @Override
-    public boolean savePage(String uuid, String content) {
+    public boolean savePage(String uuid, String content) throws SQLException { 
         if (uuid == null || content == null) {
             return false;
         }
         
-        final String sql = "INSERT INTO HTML (uuid, content) VALUES (?, ?) " +
-                          "ON DUPLICATE KEY UPDATE content = VALUES(content)";
-        
+        final String sql = "INSERT INTO HTML (uuid, content) VALUES (?, ?) " ;
+                          //"ON DUPLICATE KEY UPDATE content = VALUES(content)"; en caso de uuid duplicado se produce error 
+
+        // si el try falla, lanzará la excepción                          
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
@@ -130,14 +131,14 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
             int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
             
-        } catch (SQLException e) {
+        } /*catch (SQLException e) {
             System.err.println("Error guardando página " + uuid + ": " + e.getMessage());
             return false;
-        }
+        }*/
     }
     
     @Override
-    public boolean deletePage(String uuid) {
+    public boolean deletePage(String uuid) throws SQLException{
         if (uuid == null) {
             return false;
         }
@@ -152,14 +153,15 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
             int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
             
-        } catch (SQLException e) {
+        } /*catch (SQLException e) {
             System.err.println("Error eliminando página " + uuid + ": " + e.getMessage());
             return false;
-        }
+        }*/
     }
     
     @Override
-    public boolean pageExists(String uuid) {
+    public boolean pageExists(String uuid) throws SQLException{ //se sustituye el catch por esto, para permitir que luego el esrvidor pueda gestionar el error y mostrar
+                                                            // el error correspondiente que en este caso seria 500
         if (uuid == null) {
             return false;
         }
@@ -175,9 +177,9 @@ public class HTMLPageDatabaseDAO implements HTMLPageDAO {
                 return rs.next();
             }
             
-        } catch (SQLException e) {
+        } /*catch (SQLException e) {
             System.err.println("Error verificando existencia de página " + uuid + ": " + e.getMessage());
             return false;
-        }
+        }*/
     }
 }

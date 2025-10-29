@@ -39,7 +39,7 @@ public class HybridServer implements AutoCloseable {
   private final Properties config; // Configuraciones del servidor
   private final int port;
 
-  public HybridServer() {
+  public HybridServer() { //REVISAR ESTO, EN CASO DE 0 PARAMETROS SE USA BD O MEMORIA
     // Inicializar con los parámetros por defecto
     this.numClients = 50;
     this.port = SERVICE_PORT;
@@ -158,7 +158,7 @@ public class HybridServer implements AutoCloseable {
 
     if (serverThread != null) {
       try {
-        this.serverThread.join(5000); // Esperar máximo 5 segundos
+        this.serverThread.join();
       } catch (InterruptedException e) {
         System.err.println("Interrupción mientras se esperaba el cierre del servidor: " + e.getMessage());
         Thread.currentThread().interrupt();
