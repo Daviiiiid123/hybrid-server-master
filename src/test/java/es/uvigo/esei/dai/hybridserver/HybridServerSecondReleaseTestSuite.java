@@ -22,9 +22,12 @@ import org.junit.platform.suite.api.Suite;
 
 @Suite
 @SelectClasses({
-  Step1TestSuite.class,
-  //Step2TestSuite.class,
-  Step3TestSuite.class
+	Step1TestSuite.class,
+//	Step2TestSuite.class, En este paso se utiliza el DAO en memoria, que no se require para la entrega final.
+	Step3TestSuite.class,
+	Step4TestSuite.class,
+	Step6TestSuite.class,
+	Step7TestSuite.class
 })
-public class HybridServerFirstReleaseTestSuite {
+public class HybridServerSecondReleaseTestSuite {
 }

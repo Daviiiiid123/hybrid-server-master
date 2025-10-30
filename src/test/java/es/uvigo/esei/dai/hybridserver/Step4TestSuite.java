@@ -20,11 +20,18 @@ package es.uvigo.esei.dai.hybridserver;
 import org.junit.platform.suite.api.SelectClasses;
 import org.junit.platform.suite.api.Suite;
 
+import es.uvigo.esei.dai.hybridserver.step4.HTMLClientRequestsWithDatabaseTest;
+import es.uvigo.esei.dai.hybridserver.step4.XMLClientRequestsWithDatabaseTest;
+import es.uvigo.esei.dai.hybridserver.step4.XSDClientRequestsWithDatabaseTest;
+import es.uvigo.esei.dai.hybridserver.step4.XSLTClientRequestsWithDatabaseTest;
+
 @Suite
 @SelectClasses({
-  Step1TestSuite.class,
-  //Step2TestSuite.class,
-  Step3TestSuite.class
+	HTMLClientRequestsWithDatabaseTest.class,
+	XMLClientRequestsWithDatabaseTest.class,
+	XSDClientRequestsWithDatabaseTest.class,
+	XSLTClientRequestsWithDatabaseTest.class
 })
-public class HybridServerFirstReleaseTestSuite {
+public class Step4TestSuite {
+
 }

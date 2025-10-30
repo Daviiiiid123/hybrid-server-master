@@ -20,11 +20,16 @@ package es.uvigo.esei.dai.hybridserver;
 import org.junit.platform.suite.api.SelectClasses;
 import org.junit.platform.suite.api.Suite;
 
+import es.uvigo.esei.dai.hybridserver.step6.ConvertedXMLTest;
+import es.uvigo.esei.dai.hybridserver.step6.InvalidXMLConfigurationLoaderTest;
+import es.uvigo.esei.dai.hybridserver.step6.XMLConfigurationLoaderTest;
+
 @Suite
 @SelectClasses({
-  Step1TestSuite.class,
-  //Step2TestSuite.class,
-  Step3TestSuite.class
+	ConvertedXMLTest.class,
+	InvalidXMLConfigurationLoaderTest.class,
+	XMLConfigurationLoaderTest.class
 })
-public class HybridServerFirstReleaseTestSuite {
+public class Step6TestSuite {
+
 }
