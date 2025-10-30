@@ -20,14 +20,22 @@ package es.uvigo.esei.dai.hybridserver;
 import org.junit.platform.suite.api.SelectClasses;
 import org.junit.platform.suite.api.Suite;
 
-import es.uvigo.esei.dai.hybridserver.step1.HTTPRequestResponseSuite;
-import es.uvigo.esei.dai.hybridserver.step2.ClientRequetsTest;
+import es.uvigo.esei.dai.hybridserver.step7.HtmlMultipleServersTestCase;
+import es.uvigo.esei.dai.hybridserver.step7.TransformedMultipleServersTestCase;
+import es.uvigo.esei.dai.hybridserver.step7.WelcomeAndListsMultipleServersTestCase;
+import es.uvigo.esei.dai.hybridserver.step7.XmlMultipleServersTestCase;
+import es.uvigo.esei.dai.hybridserver.step7.XsdMultipleServersTestCase;
+import es.uvigo.esei.dai.hybridserver.step7.XsltMultipleServersTestCase;
 
 @Suite
 @SelectClasses({
-  ClientRequetsTest.class,
-  HTTPRequestResponseSuite.class
+	WelcomeAndListsMultipleServersTestCase.class,
+	HtmlMultipleServersTestCase.class,
+	XmlMultipleServersTestCase.class,
+	XsdMultipleServersTestCase.class,
+	XsltMultipleServersTestCase.class,
+	TransformedMultipleServersTestCase.class
 })
-public class Step2TestSuite {
+public class Step7TestSuite {
 
 }

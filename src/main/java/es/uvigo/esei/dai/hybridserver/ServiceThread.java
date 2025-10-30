@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.UUID;
 
@@ -44,58 +45,68 @@ public class ServiceThread implements Runnable {
 
     @Override
     public void run() {
-        
+
+        HTTPResponse response;
+
         // Abrimos flujos de lectura/escritura ligados al socket del cliente.
         // Se usan dentro del try-with-resources para cerrarlos automáticamente.
         try (InputStreamReader reader = new InputStreamReader(socket.getInputStream(), "UTF-8");
                 OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream(), "UTF-8")) {
 
-            System.out.println("[ServiceThread] Iniciando procesamiento de petición");
+            // Este try-catch interno es solo para la logica de la aplicacion
+            try {
+                System.out.println("[ServiceThread] Iniciando procesamiento de petición");
 
-            // Parsear la petición HTTP recibida desde el cliente
-            HTTPRequest request = new HTTPRequest(reader);
+                // Parsear la petición HTTP recibida desde el cliente
+                HTTPRequest request = new HTTPRequest(reader);
 
-            System.out.println(
-                    "[ServiceThread] Petición parseada: " + request.getMethod() + " " + request.getResourceName());
+                System.out.println(
+                        "[ServiceThread] Petición parseada: " + request.getMethod() + " " + request.getResourceName());
 
-            // Procesar la petición y obtener la respuesta correspondiente
-            HTTPResponse response = processRequest(request);
+                // Procesar la petición y obtener la respuesta correspondiente
+                // en casp de error salta al catch de abajo
+                response = processRequest(request);
 
-            System.out.println("[ServiceThread] Respuesta generada: " + response.getStatus());
-            System.out.println("[ServiceThread] Content-Type: " + response.getParameters().get("Content-Type"));
-            System.out.println("[ServiceThread] Content-Length: " + response.getParameters().get("Content-Length"));
-            System.out.println("[ServiceThread] Contenido : " +
-                    (response.getContent() != null
-                            ? response.getContent().substring(0, Math.min(100, response.getContent().length()))
-                            : "null"));
+                System.out.println("[ServiceThread] Respuesta generada: " + response.getStatus());
+                System.out.println("[ServiceThread] Content-Type: " + response.getParameters().get("Content-Type"));
+                System.out.println("[ServiceThread] Content-Length: " + response.getParameters().get("Content-Length"));
+                System.out.println("[ServiceThread] Contenido : " +
+                        (response.getContent() != null
+                                ? response.getContent().substring(0, Math.min(100, response.getContent().length()))
+                                : "null"));
 
-            // Enviar la respuesta al cliente
+
+            } catch (Exception e) {
+                // en caso de error en el try interno (parsing, BD , ...) se genera respuesta
+                // 500
+                System.err.println("[ServiceThread] Error procesando petición: " + e.getMessage());
+                e.printStackTrace();
+                // Si ocurre cualquier excepción durante el procesamiento, intentamos
+                // enviar una respuesta 500 al cliente para informar del error y continuar.
+
+                response = new HTTPResponse();
+                response.setStatus(HTTPResponseStatus.S500);
+                response.putParameter("Content-Type", "text/html");
+                response.setContent("<html><body><h1>500 Internal Server Error</h1></body></html>");
+
+            }
+            // se envia la respuesta (sea de confirmacion o de error)
+            // el writer del try exterior sigue abierto aqui
+           
             response.print(writer);
             writer.flush();
-
             System.out.println("[ServiceThread] Respuesta enviada correctamente");
+            
 
-        } catch (Exception e) {
-            System.err.println("[ServiceThread] Error procesando petición: " + e.getMessage());
-            e.printStackTrace();
-            // Si ocurre cualquier excepción durante el procesamiento, intentamos
-            // enviar una respuesta 500 al cliente para informar del error y continuar.
-            try (OutputStreamWriter writer = new OutputStreamWriter(socket.getOutputStream(), "UTF-8")) {
-                HTTPResponse errorResponse = new HTTPResponse();
-                errorResponse.setStatus(HTTPResponseStatus.S500);
-                errorResponse.putParameter("Content-Type", "text/html");
-                errorResponse.setContent("<html><body><h1>500 Internal Server Error</h1></body></html>");
-                errorResponse.print(writer);
-            } catch (IOException ioException) {
-                System.err.println("[ServiceThread] Error enviando respuesta de error: " + ioException.getMessage());
-                // Si no podemos enviar la respuesta de error, no podemos hacer más;
-                // simplemente dejamos que el hilo termine. No lanzamos la excepción
-                // para evitar detener el servidor.
-            }
+        } catch (IOException ex) {
+            // si esto falla es un error de red, no es un error propio del server
+            System.err.println("[ServiceThread] Error fatal de E/S al escribir en el socket: " + ex.getMessage());
         } finally {
             // En cualquier caso cerramos el socket del cliente.
             try {
-                socket.close();
+                if (socket != null && !socket.isClosed()) {
+                    socket.close();
+                }
             } catch (IOException e) {
                 // Ignoramos errores al cerrar el socket para no afectar al resto del servidor.
             }
@@ -129,7 +140,7 @@ public class ServiceThread implements Runnable {
                 return createPageList();
             }
         } else {
-           
+
             return createErrorResponse(HTTPResponseStatus.S400, "Bad Request");
         }
     }
@@ -142,7 +153,7 @@ public class ServiceThread implements Runnable {
             // Se espera que el cuerpo esté codificado como
             // application/x-www-form-urlencoded
             // y que tenga el parámetro 'html' con el contenido HTML a almacenar.
-            
+
             String htmlParam = request.getResourceParameters().get("html");
 
             // Si falta el parámetro 'html' devolvemos 400 Bad Request
@@ -155,31 +166,38 @@ public class ServiceThread implements Runnable {
 
             // Guardar la página usando el DAO
             HTMLPageDAO pageDAO = server.getPageDAO();
-            boolean saved = pageDAO.savePage(uuid, htmlParam);
 
-            if (!saved) {
+            try {
+                boolean saved = pageDAO.savePage(uuid, htmlParam);
+
+                if (!saved) {
+                    return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+                }
+
+                // Preparar la respuesta HTML informando del recurso creado y proporcionando
+                // un enlace para acceder a él (/html?uuid=<uuid>)
+                HTTPResponse response = new HTTPResponse();
+                response.setStatus(HTTPResponseStatus.S200); // 200 OK
+                response.putParameter("Content-Type", "text/html");
+
+                StringBuilder html = new StringBuilder();
+                html.append("<html>");
+                html.append("<head><title>Page Created</title></head>");
+                html.append("<body>");
+                html.append("<h1>Page created</h1>");
+                html.append("<p>New page id: <a href=\"html?uuid=").append(uuid).append("\">").append(uuid)
+                        .append("</a></p>");
+                html.append("<p><a href=\"/html\">Ver lista de páginas</a></p>");
+                html.append("</body>");
+                html.append("</html>");
+
+                response.setContent(html.toString());
+                return response;
+            } catch (SQLException e) {
+                System.err.println("[ServiceThread] Error en el POST: " + e.getMessage());
+                // error de la bd
                 return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
             }
-
-            // Preparar la respuesta HTML informando del recurso creado y proporcionando
-            // un enlace para acceder a él (/html?uuid=<uuid>)
-            HTTPResponse response = new HTTPResponse();
-            response.setStatus(HTTPResponseStatus.S200); // 200 OK 
-            response.putParameter("Content-Type", "text/html");
-
-            StringBuilder html = new StringBuilder();
-            html.append("<html>");
-            html.append("<head><title>Page Created</title></head>");
-            html.append("<body>");
-            html.append("<h1>Page created</h1>");
-            html.append("<p>New page id: <a href=\"html?uuid=").append(uuid).append("\">").append(uuid)
-                    .append("</a></p>");
-            html.append("<p><a href=\"/html\">Ver lista de páginas</a></p>");
-            html.append("</body>");
-            html.append("</html>");
-
-            response.setContent(html.toString());
-            return response;
         }
 
         return createErrorResponse(HTTPResponseStatus.S405, "Method Not Allowed");
@@ -239,8 +257,8 @@ public class ServiceThread implements Runnable {
     private HTTPResponse createWelcomePage() {
         HTTPResponse response = new HTTPResponse();
         response.setStatus(HTTPResponseStatus.S200);
-        response.putParameter("Content-Type", "text/html"); // CSS
-                                                            // ---------------------------------------------------------------------
+        response.putParameter("Content-Type", "text/html"); 
+                                                            
         String html = "<html>" +
                 "<head><title>Pagina Principal - Hybrid Server</title></head>" +
                 "<body>" +
@@ -250,6 +268,12 @@ public class ServiceThread implements Runnable {
                 "<div>" +
                 "<a href='/html'>Ver Lista de Paginas</a>" +
                 "</div>" +
+
+                "<hr>" +
+                "<p>Autores: Alejandro M Calvar Blanco </p>" + 
+                "<p> Alejandro M Calvar Blanco </p>" + 
+                "<p> David Fraga Rincon </p>" + 
+
                 "</body>" +
                 "</html>";
 
@@ -258,6 +282,18 @@ public class ServiceThread implements Runnable {
     }
 
     private HTTPResponse createPageList() {
+
+        // primero se gestiona la logica de la bd
+        Map<String, String> pages;
+
+        try {
+            HTMLPageDAO pageDAO = server.getPageDAO();
+            pages = pageDAO.getAllPages();
+        } catch (Exception e) {
+            System.err.println("[ServiceThread] Error obteniendo lista de paginas : " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error (Database Error)");
+        }
+        //si la consulta a la bdfue exitosa, sigue
         HTTPResponse response = new HTTPResponse();
         response.setStatus(HTTPResponseStatus.S200);
         response.putParameter("Content-Type", "text/html");
@@ -271,22 +307,17 @@ public class ServiceThread implements Runnable {
         html.append("<div>");
         html.append("<ul>");
 
-        try {
-            HTMLPageDAO pageDAO = server.getPageDAO();
-            Map<String, String> pages = pageDAO.getAllPages();
 
-            if (pages != null && !pages.isEmpty()) {
-                for (String uuid : pages.keySet()) {
-                    html.append("<li>");
-                    html.append("<a href='/html?uuid=").append(uuid).append("'>")
-                            .append(uuid).append("</a>");
-                    html.append("</li>");
-                }
-            } else {
-                html.append("<li>No hay paginas disponibles</li>");
+        //gestion del mapa de paginas 
+        if (pages != null && !pages.isEmpty()) {
+            for (String uuid : pages.keySet()) {
+                html.append("<li>");
+                html.append("<a href='/html?uuid=").append(uuid).append("'>")
+                        .append(uuid).append("</a>");
+                html.append("</li>");
             }
-        } catch (Exception e) {
-            html.append("<li>Error accediendo a las paginas: ").append(e.getMessage()).append("</li>");
+        } else {
+            html.append("<li>No hay paginas disponibles</li>");
         }
 
         html.append("</ul>");

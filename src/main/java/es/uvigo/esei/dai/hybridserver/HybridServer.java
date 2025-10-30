@@ -38,8 +38,9 @@ public class HybridServer implements AutoCloseable {
   private HTMLPageDAO pageDAO; // DAO para almacenamiento de páginas
   private final Properties config; // Configuraciones del servidor
   private final int port;
+  private Configuration conf;
 
-  public HybridServer() {
+  public HybridServer() { //REVISAR ESTO, EN CASO DE 0 PARAMETROS SE USA BD O MEMORIA
     // Inicializar con los parámetros por defecto
     this.numClients = 50;
     this.port = SERVICE_PORT;
@@ -49,7 +50,7 @@ public class HybridServer implements AutoCloseable {
     // Usar DAO en memoria por defecto
     this.pageDAO = new HTMLPageMemoryDAO();
   }
-
+/*
   public HybridServer(Map<String, String> pages) {
     // Inicializar con la base de datos en memoria conteniendo "pages"
     this.numClients = 50;
@@ -60,6 +61,16 @@ public class HybridServer implements AutoCloseable {
     // Usar DAO en memoria con páginas iniciales
     this.pageDAO = new HTMLPageMemoryDAO(pages);
   }
+ */
+
+  public HybridServer(Configuration conf){ //constructor para iniciar con el fichero xlm
+
+     this.numClients = 50;
+    this.port = SERVICE_PORT;
+    this.config = null;
+    this.threadPool = Executors.newFixedThreadPool(numClients);
+  }
+
 
   public HybridServer(Properties properties) {
     // Inicializar con los parámetros recibidos
@@ -158,7 +169,7 @@ public class HybridServer implements AutoCloseable {
 
     if (serverThread != null) {
       try {
-        this.serverThread.join(5000); // Esperar máximo 5 segundos
+        this.serverThread.join();
       } catch (InterruptedException e) {
         System.err.println("Interrupción mientras se esperaba el cierre del servidor: " + e.getMessage());
         Thread.currentThread().interrupt();

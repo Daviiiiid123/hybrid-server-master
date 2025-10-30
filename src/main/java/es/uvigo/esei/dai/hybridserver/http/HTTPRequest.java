@@ -21,7 +21,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.net.URLDecoder;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class HTTPRequest {
@@ -35,8 +35,8 @@ public class HTTPRequest {
   private int contentLength;
 
   public HTTPRequest(Reader reader) throws IOException, HTTPParseException {
-    this.resourceParameters = new HashMap<>();
-    this.headerParameters = new HashMap<>();
+    this.resourceParameters = new LinkedHashMap <>();
+    this.headerParameters = new LinkedHashMap <>();
     this.contentLength = 0;
     this.content = null;
 

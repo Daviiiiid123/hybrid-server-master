@@ -17,14 +17,11 @@
  */
 package es.uvigo.esei.dai.hybridserver;
 
-import org.junit.platform.suite.api.SelectClasses;
-import org.junit.platform.suite.api.Suite;
+import java.io.Reader;
 
-@Suite
-@SelectClasses({
-  Step1TestSuite.class,
-  //Step2TestSuite.class,
-  Step3TestSuite.class
-})
-public class HybridServerFirstReleaseTestSuite {
+public class XMLConfigurationLoader {
+  public Configuration load(Reader reader) throws Exception {
+    // TODO Cargar la configuración desde el XML a través del flujo de entrada (reader).
+    return null;
+  }
 }
