@@ -20,7 +20,6 @@ package es.uvigo.esei.dai.hybridserver;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -63,12 +62,33 @@ public class HybridServer implements AutoCloseable {
   }
  */
 
-  public HybridServer(Configuration conf){ //constructor para iniciar con el fichero xlm
-
-     this.numClients = 50;
-    this.port = SERVICE_PORT;
+  public HybridServer(Configuration conf) {
+    // Inicializar con la configuración recibida del fichero XML
+    this.conf = conf;
+    this.numClients = conf.getNumClients();
+    this.port = conf.getHttpPort();
     this.config = null;
     this.threadPool = Executors.newFixedThreadPool(numClients);
+    
+    // Determinar tipo de DAO según configuración
+    String dbUrl = conf.getDbURL();
+    String dbUser = conf.getDbUser();
+    String dbPassword = conf.getDbPassword();
+    
+    if (dbUrl != null && dbUser != null && dbPassword != null) {
+      // Intentar usar base de datos
+      try {
+        this.pageDAO = new HTMLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+        System.out.println("Usando almacenamiento en base de datos: " + dbUrl);
+      } catch (Exception e) {
+        System.err.println("Error conectando con base de datos, usando memoria: " + e.getMessage());
+        this.pageDAO = new HTMLPageMemoryDAO();
+      }
+    } else {
+      // Usar memoria si no hay configuración de BD
+      this.pageDAO = new HTMLPageMemoryDAO();
+      System.out.println("Usando almacenamiento en memoria");
+    }
   }
 
 
