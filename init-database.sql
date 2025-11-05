@@ -44,6 +44,39 @@ INSERT INTO HTML (uuid, content) VALUES
 ('welcome-db', '<html><head><title>Bienvenida desde BD</title></head><body><h1>¡Bienvenido!</h1><p>Esta página se carga desde la base de datos MySQL.</p><p>Demuestra que el DAO funciona correctamente.</p><p><a href="/html">Ver lista completa</a></p></body></html>')
 ON DUPLICATE KEY UPDATE content = VALUES(content), updated_at = CURRENT_TIMESTAMP;
 
+-- Crear tabla para documentos XSD
+CREATE TABLE IF NOT EXISTS XSD (
+    uuid VARCHAR(36) PRIMARY KEY COMMENT 'UUID único del documento XSD',
+    content TEXT NOT NULL COMMENT 'Contenido XSD del documento',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Fecha de creación',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Fecha de última actualización',
+    INDEX idx_created_at (created_at),
+    INDEX idx_updated_at (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Almacena los documentos XSD del servidor híbrido';
+
+-- Crear tabla para documentos XML
+CREATE TABLE IF NOT EXISTS XML (
+    uuid VARCHAR(36) PRIMARY KEY COMMENT 'UUID único del documento XML',
+    content TEXT NOT NULL COMMENT 'Contenido XML del documento',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Fecha de creación',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Fecha de última actualización',
+    INDEX idx_created_at (created_at),
+    INDEX idx_updated_at (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Almacena los documentos XML del servidor híbrido';
+
+-- Crear tabla para documentos XSLT
+-- Nota: xsd contiene el UUID del XSD asociado (puede estar en otro servidor, no hay FK)
+CREATE TABLE IF NOT EXISTS XSLT (
+    uuid VARCHAR(36) PRIMARY KEY COMMENT 'UUID único del documento XSLT',
+    content TEXT NOT NULL COMMENT 'Contenido XSLT del documento',
+    xsd CHAR(36) NOT NULL COMMENT 'UUID del XSD asociado (puede estar en otro servidor)',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Fecha de creación',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Fecha de última actualización',
+    INDEX idx_xsd (xsd),
+    INDEX idx_created_at (created_at),
+    INDEX idx_updated_at (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Almacena los documentos XSLT del servidor híbrido';
+
 -- Mostrar información de la base de datos creada
 SELECT 'Base de datos hstestdb creada exitosamente' AS status;
 SELECT COUNT(*) as total_pages FROM HTML;

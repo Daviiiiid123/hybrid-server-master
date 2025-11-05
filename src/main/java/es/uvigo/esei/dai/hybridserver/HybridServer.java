@@ -27,6 +27,15 @@ import java.util.concurrent.Executors;
 import es.uvigo.esei.dai.hybridserver.dao.HTMLPageDAO;
 import es.uvigo.esei.dai.hybridserver.dao.HTMLPageDatabaseDAO;
 import es.uvigo.esei.dai.hybridserver.dao.HTMLPageMemoryDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XMLDocumentDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XMLDocumentDatabaseDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XMLDocumentMemoryDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XSDDocumentDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XSDDocumentDatabaseDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XSDDocumentMemoryDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XSLTDocumentDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XSLTDocumentDatabaseDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XSLTDocumentMemoryDAO;
 
 public class HybridServer implements AutoCloseable {
   private static final int SERVICE_PORT = 8888;
@@ -34,7 +43,10 @@ public class HybridServer implements AutoCloseable {
   private boolean stop;
   private final ExecutorService threadPool;
   private final int numClients;
-  private HTMLPageDAO pageDAO; // DAO para almacenamiento de páginas
+  private HTMLPageDAO pageDAO; // DAO para almacenamiento de páginas HTML
+  private XSDDocumentDAO xsdDAO; // DAO para almacenamiento de documentos XSD
+  private XMLDocumentDAO xmlDAO; // DAO para almacenamiento de documentos XML
+  private XSLTDocumentDAO xsltDAO; // DAO para almacenamiento de documentos XSLT
   private final Properties config; // Configuraciones del servidor
   private final int port;
   private Configuration conf;
@@ -48,6 +60,9 @@ public class HybridServer implements AutoCloseable {
     
     // Usar DAO en memoria por defecto
     this.pageDAO = new HTMLPageMemoryDAO();
+    this.xsdDAO = new XSDDocumentMemoryDAO();
+    this.xmlDAO = new XMLDocumentMemoryDAO();
+    this.xsltDAO = new XSLTDocumentMemoryDAO();
   }
 /*
   public HybridServer(Map<String, String> pages) {
@@ -79,14 +94,23 @@ public class HybridServer implements AutoCloseable {
       // Intentar usar base de datos
       try {
         this.pageDAO = new HTMLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xsdDAO = new XSDDocumentDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xmlDAO = new XMLDocumentDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xsltDAO = new XSLTDocumentDatabaseDAO(dbUrl, dbUser, dbPassword);
         System.out.println("Usando almacenamiento en base de datos: " + dbUrl);
       } catch (Exception e) {
         System.err.println("Error conectando con base de datos, usando memoria: " + e.getMessage());
         this.pageDAO = new HTMLPageMemoryDAO();
+        this.xsdDAO = new XSDDocumentMemoryDAO();
+        this.xmlDAO = new XMLDocumentMemoryDAO();
+        this.xsltDAO = new XSLTDocumentMemoryDAO();
       }
     } else {
       // Usar memoria si no hay configuración de BD
       this.pageDAO = new HTMLPageMemoryDAO();
+      this.xsdDAO = new XSDDocumentMemoryDAO();
+      this.xmlDAO = new XMLDocumentMemoryDAO();
+      this.xsltDAO = new XSLTDocumentMemoryDAO();
       System.out.println("Usando almacenamiento en memoria");
     }
   }
@@ -108,14 +132,23 @@ public class HybridServer implements AutoCloseable {
       // Intentar usar base de datos
       try {
         this.pageDAO = new HTMLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xsdDAO = new XSDDocumentDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xmlDAO = new XMLDocumentDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xsltDAO = new XSLTDocumentDatabaseDAO(dbUrl, dbUser, dbPassword);
         System.out.println("Usando almacenamiento en base de datos: " + dbUrl);
       } catch (Exception e) {
         System.err.println("Error conectando con base de datos, usando memoria: " + e.getMessage());
         this.pageDAO = new HTMLPageMemoryDAO();
+        this.xsdDAO = new XSDDocumentMemoryDAO();
+        this.xmlDAO = new XMLDocumentMemoryDAO();
+        this.xsltDAO = new XSLTDocumentMemoryDAO();
       }
     } else {
       // Usar memoria si no hay configuración de BD
       this.pageDAO = new HTMLPageMemoryDAO();
+      this.xsdDAO = new XSDDocumentMemoryDAO();
+      this.xmlDAO = new XMLDocumentMemoryDAO();
+      this.xsltDAO = new XSLTDocumentMemoryDAO();
       System.out.println("Usando almacenamiento en memoria");
     }
   }
@@ -127,6 +160,18 @@ public class HybridServer implements AutoCloseable {
   // Getters for ServiceThread
   public HTMLPageDAO getPageDAO() {
     return pageDAO;
+  }
+  
+  public XSDDocumentDAO getXsdDAO() {
+    return xsdDAO;
+  }
+  
+  public XMLDocumentDAO getXmlDAO() {
+    return xmlDAO;
+  }
+  
+  public XSLTDocumentDAO getXsltDAO() {
+    return xsltDAO;
   }
   
   public Properties getConfig() {

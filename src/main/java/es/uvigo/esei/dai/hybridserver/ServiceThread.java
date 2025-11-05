@@ -26,6 +26,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import es.uvigo.esei.dai.hybridserver.dao.HTMLPageDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XMLDocumentDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XSDDocumentDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XSLTDocumentDAO;
 import es.uvigo.esei.dai.hybridserver.http.HTTPRequest;
 import es.uvigo.esei.dai.hybridserver.http.HTTPRequestMethod;
 import es.uvigo.esei.dai.hybridserver.http.HTTPResponse;
@@ -135,12 +138,32 @@ public class ServiceThread implements Runnable {
         } else if ("html".equals(path) || "/html".equals(path)) {
             String uuid = request.getResourceParameters().get("uuid");
             if (uuid != null) {
-                return servePage(uuid);
+                return serveHtmlPage(uuid);
             } else {
-                return createPageList();
+                return createHtmlPageList();
+            }
+        } else if ("xsd".equals(path) || "/xsd".equals(path)) {
+            String uuid = request.getResourceParameters().get("uuid");
+            if (uuid != null) {
+                return serveXsdDocument(uuid);
+            } else {
+                return createXsdDocumentList();
+            }
+        } else if ("xml".equals(path) || "/xml".equals(path)) {
+            String uuid = request.getResourceParameters().get("uuid");
+            if (uuid != null) {
+                return serveXmlDocument(uuid);
+            } else {
+                return createXmlDocumentList();
+            }
+        } else if ("xslt".equals(path) || "/xslt".equals(path)) {
+            String uuid = request.getResourceParameters().get("uuid");
+            if (uuid != null) {
+                return serveXsltDocument(uuid);
+            } else {
+                return createXsltDocumentList();
             }
         } else {
-
             return createErrorResponse(HTTPResponseStatus.S400, "Bad Request");
         }
     }
@@ -149,108 +172,366 @@ public class ServiceThread implements Runnable {
         String path = request.getResourceName();
 
         if ("html".equals(path) || "/html".equals(path)) {
-            // -- Manejo de POST sobre /html --
-            // Se espera que el cuerpo esté codificado como
-            // application/x-www-form-urlencoded
-            // y que tenga el parámetro 'html' con el contenido HTML a almacenar.
-
-            String htmlParam = request.getResourceParameters().get("html");
-
-            // Si falta el parámetro 'html' devolvemos 400 Bad Request
-            if (htmlParam == null || htmlParam.isEmpty()) {
-                return createErrorResponse(HTTPResponseStatus.S400, "Bad Request");
-            }
-
-            // Generar un UUID único para la nueva página
-            String uuid = UUID.randomUUID().toString();
-
-            // Guardar la página usando el DAO
-            HTMLPageDAO pageDAO = server.getPageDAO();
-
-            try {
-                boolean saved = pageDAO.savePage(uuid, htmlParam);
-
-                if (!saved) {
-                    return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
-                }
-
-                // Preparar la respuesta HTML informando del recurso creado y proporcionando
-                // un enlace para acceder a él (/html?uuid=<uuid>)
-                HTTPResponse response = new HTTPResponse();
-                response.setStatus(HTTPResponseStatus.S200); // 200 OK
-                response.putParameter("Content-Type", "text/html");
-
-                StringBuilder html = new StringBuilder();
-                html.append("<html>");
-                html.append("<head><title>Page Created</title></head>");
-                html.append("<body>");
-                html.append("<h1>Page created</h1>");
-                html.append("<p>New page id: <a href=\"html?uuid=").append(uuid).append("\">").append(uuid)
-                        .append("</a></p>");
-                html.append("<p><a href=\"/html\">Ver lista de páginas</a></p>");
-                html.append("</body>");
-                html.append("</html>");
-
-                response.setContent(html.toString());
-                return response;
-            } catch (SQLException e) {
-                System.err.println("[ServiceThread] Error en el POST: " + e.getMessage());
-                // error de la bd
-                return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
-            }
+            return handlePostHtml(request);
+        } else if ("xsd".equals(path) || "/xsd".equals(path)) {
+            return handlePostXsd(request);
+        } else if ("xml".equals(path) || "/xml".equals(path)) {
+            return handlePostXml(request);
+        } else if ("xslt".equals(path) || "/xslt".equals(path)) {
+            return handlePostXslt(request);
         }
 
         return createErrorResponse(HTTPResponseStatus.S405, "Method Not Allowed");
+    }
+    
+    private HTTPResponse handlePostHtml(HTTPRequest request) {
+        // -- Manejo de POST sobre /html --
+        String htmlParam = request.getResourceParameters().get("html");
+
+        // Si falta el parámetro 'html' devolvemos 400 Bad Request
+        if (htmlParam == null || htmlParam.isEmpty()) {
+            return createErrorResponse(HTTPResponseStatus.S400, "Bad Request");
+        }
+
+        // Generar un UUID único para la nueva página
+        String uuid = UUID.randomUUID().toString();
+
+        // Guardar la página usando el DAO
+        HTMLPageDAO pageDAO = server.getPageDAO();
+
+        try {
+            boolean saved = pageDAO.savePage(uuid, htmlParam);
+
+            if (!saved) {
+                return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+            }
+
+            // Preparar la respuesta HTML informando del recurso creado
+            HTTPResponse response = new HTTPResponse();
+            response.setStatus(HTTPResponseStatus.S200);
+            response.putParameter("Content-Type", "text/html");
+
+            StringBuilder html = new StringBuilder();
+            html.append("<html>");
+            html.append("<head><title>Page Created</title></head>");
+            html.append("<body>");
+            html.append("<h1>Page created</h1>");
+            html.append("<p>New page id: <a href=\"html?uuid=").append(uuid).append("\">").append(uuid)
+                    .append("</a></p>");
+            html.append("<p><a href=\"/html\">Ver lista de páginas</a></p>");
+            html.append("</body>");
+            html.append("</html>");
+
+            response.setContent(html.toString());
+            return response;
+        } catch (SQLException e) {
+            System.err.println("[ServiceThread] Error en el POST HTML: " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+        }
+    }
+    
+    private HTTPResponse handlePostXsd(HTTPRequest request) {
+        String xsdParam = request.getResourceParameters().get("xsd");
+
+        if (xsdParam == null || xsdParam.isEmpty()) {
+            return createErrorResponse(HTTPResponseStatus.S400, "Bad Request");
+        }
+
+        String uuid = UUID.randomUUID().toString();
+        XSDDocumentDAO xsdDAO = server.getXsdDAO();
+
+        try {
+            boolean saved = xsdDAO.saveDocument(uuid, xsdParam);
+
+            if (!saved) {
+                return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+            }
+
+            HTTPResponse response = new HTTPResponse();
+            response.setStatus(HTTPResponseStatus.S200);
+            response.putParameter("Content-Type", "text/html");
+
+            StringBuilder html = new StringBuilder();
+            html.append("<html>");
+            html.append("<head><title>XSD Created</title></head>");
+            html.append("<body>");
+            html.append("<h1>XSD document created</h1>");
+            html.append("<p>New XSD id: <a href=\"xsd?uuid=").append(uuid).append("\">").append(uuid)
+                    .append("</a></p>");
+            html.append("<p><a href=\"/xsd\">Ver lista de documentos XSD</a></p>");
+            html.append("</body>");
+            html.append("</html>");
+
+            response.setContent(html.toString());
+            return response;
+        } catch (SQLException e) {
+            System.err.println("[ServiceThread] Error en el POST XSD: " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+        }
+    }
+    
+    private HTTPResponse handlePostXml(HTTPRequest request) {
+        String xmlParam = request.getResourceParameters().get("xml");
+
+        if (xmlParam == null || xmlParam.isEmpty()) {
+            return createErrorResponse(HTTPResponseStatus.S400, "Bad Request");
+        }
+
+        String uuid = UUID.randomUUID().toString();
+        XMLDocumentDAO xmlDAO = server.getXmlDAO();
+
+        try {
+            boolean saved = xmlDAO.saveDocument(uuid, xmlParam);
+
+            if (!saved) {
+                return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+            }
+
+            HTTPResponse response = new HTTPResponse();
+            response.setStatus(HTTPResponseStatus.S200);
+            response.putParameter("Content-Type", "text/html");
+
+            StringBuilder html = new StringBuilder();
+            html.append("<html>");
+            html.append("<head><title>XML Created</title></head>");
+            html.append("<body>");
+            html.append("<h1>XML document created</h1>");
+            html.append("<p>New XML id: <a href=\"xml?uuid=").append(uuid).append("\">").append(uuid)
+                    .append("</a></p>");
+            html.append("<p><a href=\"/xml\">Ver lista de documentos XML</a></p>");
+            html.append("</body>");
+            html.append("</html>");
+
+            response.setContent(html.toString());
+            return response;
+        } catch (SQLException e) {
+            System.err.println("[ServiceThread] Error en el POST XML: " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+        }
+    }
+    
+    private HTTPResponse handlePostXslt(HTTPRequest request) {
+        String xsltParam = request.getResourceParameters().get("xslt");
+        String xsdParam = request.getResourceParameters().get("xsd");
+
+        // Validar parámetro xslt
+        if (xsltParam == null || xsltParam.isEmpty()) {
+            return createErrorResponse(HTTPResponseStatus.S400, "Bad Request");
+        }
+
+        // Validar parámetro xsd (obligatorio para XSLT)
+        if (xsdParam == null || xsdParam.isEmpty()) {
+            return createErrorResponse(HTTPResponseStatus.S400, "Bad Request");
+        }
+
+        // Verificar que el XSD existe
+        XSDDocumentDAO xsdDAO = server.getXsdDAO();
+        try {
+            boolean xsdExists = xsdDAO.documentExists(xsdParam);
+            if (!xsdExists) {
+                return createErrorResponse(HTTPResponseStatus.S404, "Not Found");
+            }
+        } catch (SQLException e) {
+            System.err.println("[ServiceThread] Error verificando XSD: " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+        }
+
+        String uuid = UUID.randomUUID().toString();
+        XSLTDocumentDAO xsltDAO = server.getXsltDAO();
+
+        try {
+            boolean saved = xsltDAO.saveDocument(uuid, xsltParam, xsdParam);
+
+            if (!saved) {
+                return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+            }
+
+            HTTPResponse response = new HTTPResponse();
+            response.setStatus(HTTPResponseStatus.S200);
+            response.putParameter("Content-Type", "text/html");
+
+            StringBuilder html = new StringBuilder();
+            html.append("<html>");
+            html.append("<head><title>XSLT Created</title></head>");
+            html.append("<body>");
+            html.append("<h1>XSLT document created</h1>");
+            html.append("<p>New XSLT id: <a href=\"xslt?uuid=").append(uuid).append("\">").append(uuid)
+                    .append("</a></p>");
+            html.append("<p>Associated XSD: <a href=\"xsd?uuid=").append(xsdParam).append("\">").append(xsdParam)
+                    .append("</a></p>");
+            html.append("<p><a href=\"/xslt\">Ver lista de documentos XSLT</a></p>");
+            html.append("</body>");
+            html.append("</html>");
+
+            response.setContent(html.toString());
+            return response;
+        } catch (SQLException e) {
+            System.err.println("[ServiceThread] Error en el POST XSLT: " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+        }
     }
 
     private HTTPResponse handleDelete(HTTPRequest request) {
         String path = request.getResourceName();
 
         if ("html".equals(path) || "/html".equals(path)) {
-            String uuid = request.getResourceParameters().get("uuid");
-
-            System.out.println("[DELETE] UUID solicitado: " + uuid);
-
-            if (uuid == null || uuid.isEmpty()) {
-                return createErrorResponse(HTTPResponseStatus.S400, "Bad Request - UUID parameter required");
-            }
-
-            try {
-                HTMLPageDAO pageDAO = server.getPageDAO();
-
-                // verificar si la página existe
-                boolean exists = pageDAO.pageExists(uuid);
-                System.out.println("[DELETE] Página existe? " + exists);
-
-                boolean deleted = pageDAO.deletePage(uuid);
-                System.out.println("[DELETE] Página eliminada? " + deleted);
-
-                if (deleted) {
-                    HTTPResponse response = new HTTPResponse();
-                    response.setStatus(HTTPResponseStatus.S200);
-                    response.putParameter("Content-Type", "text/html");
-
-                    String html = "<html>" +
-                            "<head><title>Page Deleted</title></head>" +
-                            "<body>" +
-                            "<h1>Page Deleted</h1>" +
-                            "<p>The page with UUID " + uuid + " has been successfully deleted.</p>" +
-                            "<p><a href='/html'>Ver lista de páginas</a></p>" +
-                            "<p><a href='/'>Volver al inicio</a></p>" +
-                            "</body>" +
-                            "</html>";
-
-                    response.setContent(html);
-                    return response;
-                } else {
-                    return createErrorResponse(HTTPResponseStatus.S404, "Page Not Found");
-                }
-            } catch (Exception e) {
-                System.err.println("Error eliminando página " + uuid + ": " + e.getMessage());
-                return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
-            }
+            return handleDeleteHtml(request);
+        } else if ("xsd".equals(path) || "/xsd".equals(path)) {
+            return handleDeleteXsd(request);
+        } else if ("xml".equals(path) || "/xml".equals(path)) {
+            return handleDeleteXml(request);
+        } else if ("xslt".equals(path) || "/xslt".equals(path)) {
+            return handleDeleteXslt(request);
         } else {
             return createErrorResponse(HTTPResponseStatus.S404, "Not Found");
+        }
+    }
+    
+    private HTTPResponse handleDeleteHtml(HTTPRequest request) {
+        String uuid = request.getResourceParameters().get("uuid");
+
+        if (uuid == null || uuid.isEmpty()) {
+            return createErrorResponse(HTTPResponseStatus.S400, "Bad Request - UUID parameter required");
+        }
+
+        try {
+            HTMLPageDAO pageDAO = server.getPageDAO();
+            boolean deleted = pageDAO.deletePage(uuid);
+
+            if (deleted) {
+                HTTPResponse response = new HTTPResponse();
+                response.setStatus(HTTPResponseStatus.S200);
+                response.putParameter("Content-Type", "text/html");
+
+                String html = "<html>" +
+                        "<head><title>Page Deleted</title></head>" +
+                        "<body>" +
+                        "<h1>Page Deleted</h1>" +
+                        "<p>The page with UUID " + uuid + " has been successfully deleted.</p>" +
+                        "<p><a href='/html'>Ver lista de páginas</a></p>" +
+                        "<p><a href='/'>Volver al inicio</a></p>" +
+                        "</body>" +
+                        "</html>";
+
+                response.setContent(html);
+                return response;
+            } else {
+                return createErrorResponse(HTTPResponseStatus.S404, "Page Not Found");
+            }
+        } catch (Exception e) {
+            System.err.println("Error eliminando página " + uuid + ": " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+        }
+    }
+    
+    private HTTPResponse handleDeleteXsd(HTTPRequest request) {
+        String uuid = request.getResourceParameters().get("uuid");
+
+        if (uuid == null || uuid.isEmpty()) {
+            return createErrorResponse(HTTPResponseStatus.S400, "Bad Request - UUID parameter required");
+        }
+
+        try {
+            XSDDocumentDAO xsdDAO = server.getXsdDAO();
+            boolean deleted = xsdDAO.deleteDocument(uuid);
+
+            if (deleted) {
+                HTTPResponse response = new HTTPResponse();
+                response.setStatus(HTTPResponseStatus.S200);
+                response.putParameter("Content-Type", "text/html");
+
+                String html = "<html>" +
+                        "<head><title>XSD Deleted</title></head>" +
+                        "<body>" +
+                        "<h1>XSD Deleted</h1>" +
+                        "<p>The XSD document with UUID " + uuid + " has been successfully deleted.</p>" +
+                        "<p><a href='/xsd'>Ver lista de documentos XSD</a></p>" +
+                        "<p><a href='/'>Volver al inicio</a></p>" +
+                        "</body>" +
+                        "</html>";
+
+                response.setContent(html);
+                return response;
+            } else {
+                return createErrorResponse(HTTPResponseStatus.S404, "XSD Not Found");
+            }
+        } catch (Exception e) {
+            System.err.println("Error eliminando XSD " + uuid + ": " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+        }
+    }
+    
+    private HTTPResponse handleDeleteXml(HTTPRequest request) {
+        String uuid = request.getResourceParameters().get("uuid");
+
+        if (uuid == null || uuid.isEmpty()) {
+            return createErrorResponse(HTTPResponseStatus.S400, "Bad Request - UUID parameter required");
+        }
+
+        try {
+            XMLDocumentDAO xmlDAO = server.getXmlDAO();
+            boolean deleted = xmlDAO.deleteDocument(uuid);
+
+            if (deleted) {
+                HTTPResponse response = new HTTPResponse();
+                response.setStatus(HTTPResponseStatus.S200);
+                response.putParameter("Content-Type", "text/html");
+
+                String html = "<html>" +
+                        "<head><title>XML Deleted</title></head>" +
+                        "<body>" +
+                        "<h1>XML Deleted</h1>" +
+                        "<p>The XML document with UUID " + uuid + " has been successfully deleted.</p>" +
+                        "<p><a href='/xml'>Ver lista de documentos XML</a></p>" +
+                        "<p><a href='/'>Volver al inicio</a></p>" +
+                        "</body>" +
+                        "</html>";
+
+                response.setContent(html);
+                return response;
+            } else {
+                return createErrorResponse(HTTPResponseStatus.S404, "XML Not Found");
+            }
+        } catch (Exception e) {
+            System.err.println("Error eliminando XML " + uuid + ": " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+        }
+    }
+    
+    private HTTPResponse handleDeleteXslt(HTTPRequest request) {
+        String uuid = request.getResourceParameters().get("uuid");
+
+        if (uuid == null || uuid.isEmpty()) {
+            return createErrorResponse(HTTPResponseStatus.S400, "Bad Request - UUID parameter required");
+        }
+
+        try {
+            XSLTDocumentDAO xsltDAO = server.getXsltDAO();
+            boolean deleted = xsltDAO.deleteDocument(uuid);
+
+            if (deleted) {
+                HTTPResponse response = new HTTPResponse();
+                response.setStatus(HTTPResponseStatus.S200);
+                response.putParameter("Content-Type", "text/html");
+
+                String html = "<html>" +
+                        "<head><title>XSLT Deleted</title></head>" +
+                        "<body>" +
+                        "<h1>XSLT Deleted</h1>" +
+                        "<p>The XSLT document with UUID " + uuid + " has been successfully deleted.</p>" +
+                        "<p><a href='/xslt'>Ver lista de documentos XSLT</a></p>" +
+                        "<p><a href='/'>Volver al inicio</a></p>" +
+                        "</body>" +
+                        "</html>";
+
+                response.setContent(html);
+                return response;
+            } else {
+                return createErrorResponse(HTTPResponseStatus.S404, "XSLT Not Found");
+            }
+        } catch (Exception e) {
+            System.err.println("Error eliminando XSLT " + uuid + ": " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
         }
     }
 
@@ -264,16 +545,18 @@ public class ServiceThread implements Runnable {
                 "<body>" +
                 "<h1>Hybrid Server</h1>" +
                 "<h2>Servidor HTTP en Java</h2>" +
-                "<p>Bienvenido al servidor hibrido de paginas HTML</p>" +
+                "<p>Bienvenido al servidor hibrido de documentos estructurados</p>" +
                 "<div>" +
-                "<a href='/html'>Ver Lista de Paginas</a>" +
+                "<h3>Tipos de documentos:</h3>" +
+                "<ul>" +
+                "<li><a href='/html'>Páginas HTML</a></li>" +
+                "<li><a href='/xsd'>Documentos XSD</a></li>" +
+                "<li><a href='/xml'>Documentos XML</a></li>" +
+                "<li><a href='/xslt'>Documentos XSLT</a></li>" +
+                "</ul>" +
                 "</div>" +
-
                 "<hr>" +
-                "<p>Autores: Alejandro M Calvar Blanco </p>" + 
-                "<p> Alejandro M Calvar Blanco </p>" + 
-                "<p> David Fraga Rincon </p>" + 
-
+                "<p>Autores: Alejandro M Calvar Blanco y David Fraga Rincon</p>" + 
                 "</body>" +
                 "</html>";
 
@@ -281,8 +564,7 @@ public class ServiceThread implements Runnable {
         return response;
     }
 
-    private HTTPResponse createPageList() {
-
+    private HTTPResponse createHtmlPageList() {
         // primero se gestiona la logica de la bd
         Map<String, String> pages;
 
@@ -301,7 +583,7 @@ public class ServiceThread implements Runnable {
         StringBuilder html = new StringBuilder();
 
         html.append("<html>");
-        html.append("<head><title>Lista de Paginas</title></head>");
+        html.append("<head><title>Lista de Paginas HTML</title></head>");
         html.append("<body>");
         html.append("<h1>Lista de Paginas HTML Disponibles</h1>");
         html.append("<div>");
@@ -330,7 +612,7 @@ public class ServiceThread implements Runnable {
         return response;
     }
 
-    private HTTPResponse servePage(String uuid) {
+    private HTTPResponse serveHtmlPage(String uuid) {
         try {
             HTMLPageDAO pageDAO = server.getPageDAO();
             String content = pageDAO.getPage(uuid);
@@ -346,6 +628,198 @@ public class ServiceThread implements Runnable {
             }
         } catch (Exception e) {
             System.err.println("Error sirviendo página " + uuid + ": " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+        }
+    }
+    
+    private HTTPResponse createXsdDocumentList() {
+        Map<String, String> documents;
+
+        try {
+            XSDDocumentDAO xsdDAO = server.getXsdDAO();
+            documents = xsdDAO.getAllDocuments();
+        } catch (Exception e) {
+            System.err.println("[ServiceThread] Error obteniendo lista de XSD: " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error (Database Error)");
+        }
+
+        HTTPResponse response = new HTTPResponse();
+        response.setStatus(HTTPResponseStatus.S200);
+        response.putParameter("Content-Type", "text/html");
+
+        StringBuilder html = new StringBuilder();
+        html.append("<html>");
+        html.append("<head><title>Lista de Documentos XSD</title></head>");
+        html.append("<body>");
+        html.append("<h1>Lista de Documentos XSD Disponibles</h1>");
+        html.append("<div>");
+        html.append("<ul>");
+
+        if (documents != null && !documents.isEmpty()) {
+            for (String uuid : documents.keySet()) {
+                html.append("<li>");
+                html.append("<a href='/xsd?uuid=").append(uuid).append("'>")
+                        .append(uuid).append("</a>");
+                html.append("</li>");
+            }
+        } else {
+            html.append("<li>No hay documentos XSD disponibles</li>");
+        }
+
+        html.append("</ul>");
+        html.append("</div>");
+        html.append("<p><a href='/'>Volver al inicio</a></p>");
+        html.append("</body>");
+        html.append("</html>");
+
+        response.setContent(html.toString());
+        return response;
+    }
+
+    private HTTPResponse serveXsdDocument(String uuid) {
+        try {
+            XSDDocumentDAO xsdDAO = server.getXsdDAO();
+            String content = xsdDAO.getDocument(uuid);
+
+            if (content != null) {
+                HTTPResponse response = new HTTPResponse();
+                response.setStatus(HTTPResponseStatus.S200);
+                response.putParameter("Content-Type", "application/xml");
+                response.setContent(content);
+                return response;
+            } else {
+                return createErrorResponse(HTTPResponseStatus.S404, "XSD Not Found");
+            }
+        } catch (Exception e) {
+            System.err.println("Error sirviendo XSD " + uuid + ": " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+        }
+    }
+    
+    private HTTPResponse createXmlDocumentList() {
+        Map<String, String> documents;
+
+        try {
+            XMLDocumentDAO xmlDAO = server.getXmlDAO();
+            documents = xmlDAO.getAllDocuments();
+        } catch (Exception e) {
+            System.err.println("[ServiceThread] Error obteniendo lista de XML: " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error (Database Error)");
+        }
+
+        HTTPResponse response = new HTTPResponse();
+        response.setStatus(HTTPResponseStatus.S200);
+        response.putParameter("Content-Type", "text/html");
+
+        StringBuilder html = new StringBuilder();
+        html.append("<html>");
+        html.append("<head><title>Lista de Documentos XML</title></head>");
+        html.append("<body>");
+        html.append("<h1>Lista de Documentos XML Disponibles</h1>");
+        html.append("<div>");
+        html.append("<ul>");
+
+        if (documents != null && !documents.isEmpty()) {
+            for (String uuid : documents.keySet()) {
+                html.append("<li>");
+                html.append("<a href='/xml?uuid=").append(uuid).append("'>")
+                        .append(uuid).append("</a>");
+                html.append("</li>");
+            }
+        } else {
+            html.append("<li>No hay documentos XML disponibles</li>");
+        }
+
+        html.append("</ul>");
+        html.append("</div>");
+        html.append("<p><a href='/'>Volver al inicio</a></p>");
+        html.append("</body>");
+        html.append("</html>");
+
+        response.setContent(html.toString());
+        return response;
+    }
+
+    private HTTPResponse serveXmlDocument(String uuid) {
+        try {
+            XMLDocumentDAO xmlDAO = server.getXmlDAO();
+            String content = xmlDAO.getDocument(uuid);
+
+            if (content != null) {
+                HTTPResponse response = new HTTPResponse();
+                response.setStatus(HTTPResponseStatus.S200);
+                response.putParameter("Content-Type", "application/xml");
+                response.setContent(content);
+                return response;
+            } else {
+                return createErrorResponse(HTTPResponseStatus.S404, "XML Not Found");
+            }
+        } catch (Exception e) {
+            System.err.println("Error sirviendo XML " + uuid + ": " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
+        }
+    }
+    
+    private HTTPResponse createXsltDocumentList() {
+        Map<String, String> documents;
+
+        try {
+            XSLTDocumentDAO xsltDAO = server.getXsltDAO();
+            documents = xsltDAO.getAllDocuments();
+        } catch (Exception e) {
+            System.err.println("[ServiceThread] Error obteniendo lista de XSLT: " + e.getMessage());
+            return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error (Database Error)");
+        }
+
+        HTTPResponse response = new HTTPResponse();
+        response.setStatus(HTTPResponseStatus.S200);
+        response.putParameter("Content-Type", "text/html");
+
+        StringBuilder html = new StringBuilder();
+        html.append("<html>");
+        html.append("<head><title>Lista de Documentos XSLT</title></head>");
+        html.append("<body>");
+        html.append("<h1>Lista de Documentos XSLT Disponibles</h1>");
+        html.append("<div>");
+        html.append("<ul>");
+
+        if (documents != null && !documents.isEmpty()) {
+            for (String uuid : documents.keySet()) {
+                html.append("<li>");
+                html.append("<a href='/xslt?uuid=").append(uuid).append("'>")
+                        .append(uuid).append("</a>");
+                html.append("</li>");
+            }
+        } else {
+            html.append("<li>No hay documentos XSLT disponibles</li>");
+        }
+
+        html.append("</ul>");
+        html.append("</div>");
+        html.append("<p><a href='/'>Volver al inicio</a></p>");
+        html.append("</body>");
+        html.append("</html>");
+
+        response.setContent(html.toString());
+        return response;
+    }
+
+    private HTTPResponse serveXsltDocument(String uuid) {
+        try {
+            XSLTDocumentDAO xsltDAO = server.getXsltDAO();
+            String content = xsltDAO.getDocument(uuid);
+
+            if (content != null) {
+                HTTPResponse response = new HTTPResponse();
+                response.setStatus(HTTPResponseStatus.S200);
+                response.putParameter("Content-Type", "application/xml");
+                response.setContent(content);
+                return response;
+            } else {
+                return createErrorResponse(HTTPResponseStatus.S404, "XSLT Not Found");
+            }
+        } catch (Exception e) {
+            System.err.println("Error sirviendo XSLT " + uuid + ": " + e.getMessage());
             return createErrorResponse(HTTPResponseStatus.S500, "Internal Server Error");
         }
     }
