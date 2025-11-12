@@ -19,10 +19,8 @@ FLUSH PRIVILEGES;
 CREATE TABLE IF NOT EXISTS HTML (
     uuid VARCHAR(36) PRIMARY KEY COMMENT 'UUID único de la página',
     content TEXT NOT NULL COMMENT 'Contenido HTML de la página',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Fecha de creación',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Fecha de última actualización',
-    INDEX idx_created_at (created_at),
-    INDEX idx_updated_at (updated_at)
+   
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Almacena las páginas HTML del servidor híbrido';
 
 -- Insertar páginas de prueba requeridas por los tests
