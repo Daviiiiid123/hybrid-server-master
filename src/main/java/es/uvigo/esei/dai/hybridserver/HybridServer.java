@@ -37,6 +37,7 @@ public class HybridServer implements AutoCloseable {
   private HTMLPageDAO pageDAO; // DAO para almacenamiento de páginas
   private final Properties config; // Configuraciones del servidor
   private final int port;
+  private Configuration conf;
 
   public HybridServer() { //REVISAR ESTO, EN CASO DE 0 PARAMETROS SE USA BD O MEMORIA
     // Inicializar con los parámetros por defecto
