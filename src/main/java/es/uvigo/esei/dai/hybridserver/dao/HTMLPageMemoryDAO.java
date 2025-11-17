@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Implementación en memoria del DAO para páginas HTML.
  * Utiliza un ConcurrentHashMap para garantizar thread-safety.
  */
-public class HTMLPageMemoryDAO implements HTMLPageDAO {
+public class HTMLPageMemoryDAO implements PageDAO {
     
     private final Map<String, String> pages;
     

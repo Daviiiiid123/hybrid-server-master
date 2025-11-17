@@ -12,7 +12,7 @@ USE hstestdb;
 -- Crear usuario específico para la aplicación
 CREATE USER IF NOT EXISTS 'hsdb'@'localhost' IDENTIFIED BY 'hsdbpass';
 GRANT ALL PRIVILEGES ON hstestdb.* TO 'hsdb'@'localhost';
-FLUSH PRIVILEGES;
+FLUSH PRIVILEGES;   
 
 -- Crear tabla para páginas HTML
 -- IMPORTANTE: El nombre de la tabla debe ser 'HTML' (mayúsculas) para los tests
@@ -36,10 +36,6 @@ INSERT INTO HTML (uuid, content) VALUES
 ('f959ecb3-6382-4ae5-9325-8fcbc068e446', 'This is the html page f959ecb3-6382-4ae5-9325-8fcbc068e446.'),
 ('2471caa8-e8df-44d6-94f2-7752a74f6819', 'This is the html page 2471caa8-e8df-44d6-94f2-7752a74f6819.'),
 ('fa0979ca-2734-41f7-84c5-e40e0886e408', 'This is the html page fa0979ca-2734-41f7-84c5-e40e0886e408.'),
--- Páginas de ejemplo adicionales
-('example-page-1', '<html><head><title>Página de Ejemplo 1</title></head><body><h1>¡Hola desde la Base de Datos!</h1><p>Esta es una página de ejemplo almacenada en MySQL.</p><p><a href="/html">Volver a la lista</a></p></body></html>'),
-('example-page-2', '<html><head><title>Página de Ejemplo 2</title></head><body><h1>Segunda Página</h1><p>Otra página de ejemplo con contenido diferente.</p><p><a href="/html">Ver todas las páginas</a></p></body></html>'),
-('welcome-db', '<html><head><title>Bienvenida desde BD</title></head><body><h1>¡Bienvenido!</h1><p>Esta página se carga desde la base de datos MySQL.</p><p>Demuestra que el DAO funciona correctamente.</p><p><a href="/html">Ver lista completa</a></p></body></html>')
 ON DUPLICATE KEY UPDATE content = VALUES(content), updated_at = CURRENT_TIMESTAMP;
 
 -- Mostrar información de la base de datos creada
