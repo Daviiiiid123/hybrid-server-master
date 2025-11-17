@@ -24,9 +24,11 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import es.uvigo.esei.dai.hybridserver.dao.HTMLPageDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XMLPageDatabaseDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XSDPageDatabaseDAO;
+import es.uvigo.esei.dai.hybridserver.dao.XSLPageDatabaseDAO;
 import es.uvigo.esei.dai.hybridserver.dao.HTMLPageDatabaseDAO;
-import es.uvigo.esei.dai.hybridserver.dao.HTMLPageMemoryDAO;
+//import es.uvigo.esei.dai.hybridserver.dao.HTMLPageMemoryDAO;
 
 public class HybridServer implements AutoCloseable {
   private static final int SERVICE_PORT = 8888;
@@ -34,7 +36,13 @@ public class HybridServer implements AutoCloseable {
   private boolean stop;
   private final ExecutorService threadPool;
   private final int numClients;
-  private HTMLPageDAO pageDAO; // DAO para almacenamiento de páginas
+
+  // DAOs para cada tipo de documento
+  private HTMLPageDatabaseDAO htmlDAO; // DAO para páginas HTML  
+  private XMLPageDatabaseDAO xmlDAO; 
+  private XSDPageDatabaseDAO xsdDAO; 
+  private XSLPageDatabaseDAO xsltDAO;
+  
   private final Properties config; // Configuraciones del servidor
   private final int port;
   private Configuration conf;
@@ -46,21 +54,9 @@ public class HybridServer implements AutoCloseable {
     this.config = null;
     this.threadPool = Executors.newFixedThreadPool(numClients);
     
-    // Usar DAO en memoria por defecto
-    this.pageDAO = new HTMLPageMemoryDAO();
-  }
-/*
-  public HybridServer(Map<String, String> pages) {
-    // Inicializar con la base de datos en memoria conteniendo "pages"
-    this.numClients = 50;
-    this.port = SERVICE_PORT;
-    this.config = null;
-    this.threadPool = Executors.newFixedThreadPool(numClients);
     
-    // Usar DAO en memoria con páginas iniciales
-    this.pageDAO = new HTMLPageMemoryDAO(pages);
   }
- */
+
 
   public HybridServer(Configuration conf) {
     // Inicializar con la configuración recibida del fichero XML
@@ -78,16 +74,20 @@ public class HybridServer implements AutoCloseable {
     if (dbUrl != null && dbUser != null && dbPassword != null) {
       // Intentar usar base de datos
       try {
-        this.pageDAO = new HTMLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
-        System.out.println("Usando almacenamiento en base de datos: " + dbUrl);
+        this.htmlDAO = new HTMLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xmlDAO = new XMLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xsdDAO = new XSDPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xsltDAO = new XSLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+
+        System.out.println("Usando almacenamiento en base de datos con fichero config: " + dbUrl);
       } catch (Exception e) {
         System.err.println("Error conectando con base de datos, usando memoria: " + e.getMessage());
-        this.pageDAO = new HTMLPageMemoryDAO();
+        // this.htmlDAO = new HTMLPageMemoryDAO();
       }
     } else {
       // Usar memoria si no hay configuración de BD
-      this.pageDAO = new HTMLPageMemoryDAO();
-      System.out.println("Usando almacenamiento en memoria");
+      //this.htmlDAO = new HTMLPageMemoryDAO();
+      System.out.println("Contructor con Configuration en HybridServer no funciono, falta algun dato de la bd");
     }
   }
 
@@ -107,16 +107,20 @@ public class HybridServer implements AutoCloseable {
     if (dbUrl != null && dbUser != null && dbPassword != null) {
       // Intentar usar base de datos
       try {
-        this.pageDAO = new HTMLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
-        System.out.println("Usando almacenamiento en base de datos: " + dbUrl);
+        this.htmlDAO = new HTMLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xmlDAO = new XMLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xsdDAO = new XSDPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+        this.xsltDAO = new XSLPageDatabaseDAO(dbUrl, dbUser, dbPassword);
+
+        System.out.println("Usando almacenamiento en base de datos con fichero properties: " + dbUrl);
       } catch (Exception e) {
         System.err.println("Error conectando con base de datos, usando memoria: " + e.getMessage());
-        this.pageDAO = new HTMLPageMemoryDAO();
+        //this.htmlDAO = new HTMLPageMemoryDAO();
       }
     } else {
       // Usar memoria si no hay configuración de BD
-      this.pageDAO = new HTMLPageMemoryDAO();
-      System.out.println("Usando almacenamiento en memoria");
+      //this.htmlDAO = new HTMLPageMemoryDAO();
+      System.out.println("Contructor con properties en HybridServer no funciono, falta algun dato de la bd");
     }
   }
 
@@ -125,8 +129,20 @@ public class HybridServer implements AutoCloseable {
   }
   
   // Getters for ServiceThread
-  public HTMLPageDAO getPageDAO() {
-    return pageDAO;
+  public HTMLPageDatabaseDAO getHtmlDAO() {
+    return htmlDAO;
+  }
+
+  public XMLPageDatabaseDAO getXmlDAO() {
+    return xmlDAO;
+  }
+
+  public XSDPageDatabaseDAO getXsdDAO() {
+    return xsdDAO;
+  }
+
+  public XSLPageDatabaseDAO getXslDAO() {
+    return xsltDAO;
   }
   
   public Properties getConfig() {

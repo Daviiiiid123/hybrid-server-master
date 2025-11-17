@@ -1,20 +1,3 @@
-/**
- *  HybridServer
- *  Copyright (C) 2025 Miguel Reboiro-Jato
- *  
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *  
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *  
- *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
 package es.uvigo.esei.dai.hybridserver.dao;
 
 import java.sql.Connection;
@@ -25,43 +8,19 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Implementación en base de datos MySQL del DAO para páginas HTML.
- * Crea una nueva conexión para cada operación para evitar problemas si la BD se cae.
- */
-public class HTMLPageDatabaseDAO implements PageDAO {
-    
+public class XMLPageDatabaseDAO implements PageDAO{
+
     private final String dbUrl;
     private final String dbUser;
     private final String dbPassword;
     
-    public HTMLPageDatabaseDAO(String dbUrl, String dbUser, String dbPassword) {
+    public XMLPageDatabaseDAO(String dbUrl, String dbUser, String dbPassword) {
         this.dbUrl = dbUrl;
         this.dbUser = dbUser;
         this.dbPassword = dbPassword;
         
-        // Intentar crear la tabla si no existe
-        //initializeDatabase();
     }
-    /*
-    private void initializeDatabase() {
-        final String createTableSQL = 
-            "CREATE TABLE IF NOT EXISTS HTML (" +
-            "uuid VARCHAR(36) PRIMARY KEY, " +
-            "content TEXT NOT NULL " +
-            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-        
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(createTableSQL)) {
-            
-            stmt.executeUpdate();
-            System.out.println("Base de datos inicializada correctamente");
-            
-        } catch (SQLException e) {
-            System.err.println("Error inicializando la base de datos: " + e.getMessage());
-        }
-    }
-     */
+    
     private Connection getConnection() throws SQLException {
         return DriverManager.getConnection(dbUrl, dbUser, dbPassword);
     }
@@ -69,7 +28,7 @@ public class HTMLPageDatabaseDAO implements PageDAO {
     @Override
     public Map<String, String> getAllPages() throws SQLException{
         Map<String, String> pages = new HashMap<>();
-        final String sql = "SELECT uuid, content FROM HTML";
+        final String sql = "SELECT uuid, content FROM XML";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -79,9 +38,7 @@ public class HTMLPageDatabaseDAO implements PageDAO {
                 pages.put(rs.getString("uuid"), rs.getString("content"));
             }
             
-        } /*catch (SQLException e) {
-            System.err.println("Error obteniendo todas las páginas: " + e.getMessage());
-        }*/
+        } 
         
         return pages;
     }
@@ -92,7 +49,7 @@ public class HTMLPageDatabaseDAO implements PageDAO {
             return null;
         }
         
-        final String sql = "SELECT content FROM HTML WHERE uuid = ?";
+        final String sql = "SELECT content FROM XML WHERE uuid = ?";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -105,9 +62,7 @@ public class HTMLPageDatabaseDAO implements PageDAO {
                 }
             }
             
-        } /*catch (SQLException e) {
-            System.err.println("Error obteniendo página " + uuid + ": " + e.getMessage());
-        }*/
+        }
         
         return null;
     }
@@ -118,8 +73,8 @@ public class HTMLPageDatabaseDAO implements PageDAO {
             return false;
         }
         
-        final String sql = "INSERT INTO HTML (uuid, content) VALUES (?, ?) " ;
-                          //"ON DUPLICATE KEY UPDATE content = VALUES(content)"; en caso de uuid duplicado se produce error 
+        final String sql = "INSERT INTO XML (uuid, content) VALUES (?, ?) " ;
+                          
 
         // si el try falla, lanzará la excepción                          
         try (Connection conn = getConnection();
@@ -131,10 +86,7 @@ public class HTMLPageDatabaseDAO implements PageDAO {
             int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
             
-        } /*catch (SQLException e) {
-            System.err.println("Error guardando página " + uuid + ": " + e.getMessage());
-            return false;
-        }*/
+        } 
     }
     
     @Override
@@ -143,7 +95,7 @@ public class HTMLPageDatabaseDAO implements PageDAO {
             return false;
         }
         
-        final String sql = "DELETE FROM HTML WHERE uuid = ?";
+        final String sql = "DELETE FROM XML WHERE uuid = ?";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -153,10 +105,7 @@ public class HTMLPageDatabaseDAO implements PageDAO {
             int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
             
-        } /*catch (SQLException e) {
-            System.err.println("Error eliminando página " + uuid + ": " + e.getMessage());
-            return false;
-        }*/
+        }
     }
     
     @Override
@@ -166,7 +115,7 @@ public class HTMLPageDatabaseDAO implements PageDAO {
             return false;
         }
         
-        final String sql = "SELECT 1 FROM HTML WHERE uuid = ? LIMIT 1";
+        final String sql = "SELECT 1 FROM XML WHERE uuid = ? LIMIT 1";
         
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -177,9 +126,6 @@ public class HTMLPageDatabaseDAO implements PageDAO {
                 return rs.next();
             }
             
-        } /*catch (SQLException e) {
-            System.err.println("Error verificando existencia de página " + uuid + ": " + e.getMessage());
-            return false;
-        }*/
+        }
     }
 }

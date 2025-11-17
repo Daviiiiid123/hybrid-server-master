@@ -21,7 +21,7 @@ import java.io.Reader;
 
 public class XMLConfigurationLoader {
   public Configuration load(Reader reader) throws Exception {
-    // TODO Cargar la configuración desde el XML a través del flujo de entrada (reader).
+    // TODO Cargar la configuración desde el XML a través del flujo de entrada (reader) 
     return null;
   }
 }

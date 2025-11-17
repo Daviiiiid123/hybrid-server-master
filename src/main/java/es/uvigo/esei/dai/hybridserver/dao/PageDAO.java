@@ -21,10 +21,10 @@ import java.sql.SQLException;
 import java.util.Map;
 
 /**
- * Interface para el acceso a datos de páginas HTML.
+ * Interface para el acceso a datos.
  * Permite implementaciones tanto en memoria como en base de datos.
  */
-public interface HTMLPageDAO {
+public interface PageDAO {
     
     /**
      * Obtiene todas las páginas HTML almacenadas.
